@@ -1,0 +1,51 @@
+id,source,text,label
+1,email,"URGENT: Your bank account has been suspended. Verify now at http://fakebank-login123.com to avoid closure.",phishing
+2,sms,"Acct alert: Verify your acct here hxxp://secure-bank[.]com/verify ASAP",phishing
+3,whatsapp,"We detected unusual login. Login: https://login.bank-secure.com to confirm.",phishing
+4,internal_chat,"Reminder: Quarterly maintenance scheduled. No action required.",safe
+5,email,"Dear user, your invoice is attached. Please review.",safe
+6,sms,"Your package is out for delivery. Track: http://track.example.com/AB12345",safe
+7,email,"Action required: Password expired. Reset at http://xn--banking-abc.com/reset",phishing
+8,incident_report,"Reported: Phishing attempt via SMS claiming to be support.",safe
+9,whatsapp,"Account verification required. Click http://bank-login.example-service.com",phishing
+10,email,"Security team: We noticed a new device. If this wasn't you, respond.",phishing
+11,sms,"Your OTP is 123456. Do not share it with anyone.",safe
+12,internal_chat,"Meeting at 10:00 with operations team.",safe
+13,email,"URGENT: Confirm billing details now or your service will be terminated http://billing-update123.com",phishing
+14,sms,"Win a prize! Visit http://free-gift.example.com to claim.",phishing
+15,whatsapp,"IT: Please verify your credentials for audit. https://it-secure.company.verify",phishing
+16,email,"Monthly newsletter: highlights and updates.",safe
+17,sms,"Server alert: CPU usage high on node-3. Investigating.",safe
+18,email,"Support: Your ticket #4521 has been updated.",safe
+19,whatsapp,"Verify your account http://login-secure123.bank",phishing
+20,email,"Payment received. Thank you for your purchase.",safe
+21,sms,"URGENT: Your account will be locked immediately, verify now http://lock-account123.com",phishing
+22,internal_chat,"Please review the attached SOP draft.",safe
+23,email,"Security notice: Unusual activity detected. Reset here: h t t p : / / fake.link/reset",phishing
+24,whatsapp,"Friendly reminder: submit timesheet.",safe
+25,sms,"Your invoice for $250 is ready. View: http://invoices.example.com/INV-9876",safe
+26,email,"Administrator: Update required. Visit http://support-company-login.com",phishing
+27,email,"Government notice: Tax refund pending. Click http://gov-refund-login.com",phishing
+28,sms,"Call from bank: verify account 800-555-1212 if you didn't authorize.",phishing
+29,internal_chat,"DevOps: deployment completed to staging.",safe
+30,whatsapp,"Your subscription will renew soon. Manage at https://subscriptions.example.com",safe
+31,email,"Alert: Unusual sign-in from Russia. If this wasn't you click http://secure-verify.ru/login",phishing
+32,sms,"Congrats! You've been selected. Reply YES to claim.",phishing
+33,email,"Security team: Please confirm device ownership.",phishing
+34,internal_chat,"FYI: network maintenance tonight 23:00-02:00.",safe
+35,whatsapp,"Reset your password: http://reset-company-portal.com/reset",phishing
+36,email,"Hello, attached is the requested report.",safe
+37,sms,"System: Backup completed successfully.",safe
+38,email,"Important: Verify now to avoid penalties. Visit http://fake-bank--secure.com",phishing
+39,whatsapp,"Can you share the site access credentials?",phishing
+40,sms,"Reminder: doctor appointment tomorrow at 09:00.",safe
+41,email,"Notice: Your mailbox is almost full. Manage at http://mail.example.com/settings",safe
+42,internal_chat,"Alert: suspicious file detected on endpoint X.",safe
+43,email,"Security alert: please verify payment method immediately http://pay-update.example.com",phishing
+44,sms,"Your code: 859201. Do not disclose.",safe
+45,whatsapp,"URGENT: Confirm identity now. http://id.verify-service.com",phishing
+46,email,"Invoice attached for last month's services.",safe
+47,sms,"Suspicious login attempt. Visit http://login.bank-confirm[.]com immediately.",phishing
+48,internal_chat,"Oncall rota updated.",safe
+49,whatsapp,"Admin: password policy changed. Please update.",phishing
+50,email,"Team lunch tomorrow at 12:30 — RSVP.",safe
