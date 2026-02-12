@@ -8,7 +8,7 @@
 
 ---
 
-## 🎯 Quick Start
+##  Quick Start
 
 ### For End Users
 
@@ -19,7 +19,7 @@
 
 **That's it!** No login, no setup, works offline.
 
-📖 **Full User Guide**: [USER_GUIDE.md](./USER_GUIDE.md)
+ **Full User Guide**: [USER_GUIDE.md](./USER_GUIDE.md)
 
 ### For Developers
 
@@ -38,7 +38,7 @@ npm run dev
 npm run build
 ```
 
-🏗️ **Architecture Details**: [ARCHITECTURE.md](./ARCHITECTURE.md)
+ **Architecture Details**: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ### For System Admins
 
@@ -53,31 +53,31 @@ cp -r dist/* /var/www/phishguard/
 sudo systemctl restart nginx
 ```
 
-🚀 **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+ **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🔒 Security-First Design
+###  Security-First Design
 - **Offline-capable** - Works without internet (service worker + IndexedDB)
 - **No cloud dependencies** - All processing happens on-device
 - **Zero data leakage** - Nothing sent to external servers
 - **Air-gap compatible** - Deploy in isolated networks
 
-### 🤖 Explainable AI
+###  Explainable AI
 - **6 threat indicators** analyzed in real-time
 - **Confidence scores** for every prediction
 - **Visual explanations** showing why messages are flagged
 - **Pattern-based detection** (ready for ML model upgrade)
 
-### 📊 Complete Audit Trail
+###  Complete Audit Trail
 - **Local database** stores all scans (IndexedDB)
 - **CSV export** for compliance reporting
 - **Forensic-grade logging** with timestamps
 - **Operator decision tracking**
 
-### 🎨 SOC-Grade UI
+###  SOC-Grade UI
 - **Dark mode** by default (control room optimized)
 - **High contrast** for readability
 - **Minimal animation** for focus
@@ -85,9 +85,9 @@ sudo systemctl restart nginx
 
 ---
 
-## 📱 Application Screens
+##  Application Screens
 
-### 1️⃣ Threat Scan Console
+### 1️ Threat Scan Console
 Real-time phishing analysis with explainable AI results.
 
 **Features:**
@@ -98,7 +98,7 @@ Real-time phishing analysis with explainable AI results.
 - Detected indicator breakdown
 - One-click incident reporting
 
-### 2️⃣ Scan History
+### 2️ Scan History
 Forensic audit log of all threat scans.
 
 **Features:**
@@ -108,7 +108,7 @@ Forensic audit log of all threat scans.
 - Verdict and risk filters
 - Retention management
 
-### 3️⃣ Threat Analytics
+### 3️ Threat Analytics
 SOC-style dashboard with threat intelligence.
 
 **Features:**
@@ -118,7 +118,7 @@ SOC-style dashboard with threat intelligence.
 - Top threat indicators (bar chart)
 - Risk level breakdown
 
-### 4️⃣ System Status
+### 4️ System Status
 Monitor system health and manage updates.
 
 **Features:**
@@ -130,7 +130,7 @@ Monitor system health and manage updates.
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -179,7 +179,7 @@ Monitor system health and manage updates.
 
 ---
 
-## 🚀 Deployment Scenarios
+##  Deployment Scenarios
 
 ### Scenario 1: Air-Gapped Environment
 **Use Case**: Power grid control rooms, defense facilities
@@ -214,7 +214,7 @@ electron-packager . PhishGuardAI --platform=win32 --arch=x64
 
 ---
 
-## 🔧 Configuration
+##  Configuration
 
 ### Environment Variables
 
@@ -243,43 +243,43 @@ VITE_MAX_DB_SIZE=52428800
 
 ---
 
-## 📊 Offline Capabilities
+##  Offline Capabilities
 
 | Feature | Works Offline? |
 |---------|----------------|
-| Message Scanning | ✅ Yes |
-| Scan History | ✅ Yes |
-| Analytics Dashboard | ✅ Yes |
-| CSV Export | ✅ Yes |
-| System Status | ✅ Yes (local checks) |
-| Model Updates | ❌ No (requires network) |
+| Message Scanning |  Yes |
+| Scan History |  Yes |
+| Analytics Dashboard |  Yes |
+| CSV Export |  Yes |
+| System Status |  Yes (local checks) |
+| Model Updates |  No (requires network) |
 
-**Result**: **95% functionality offline** 🎉
+**Result**: **95% functionality offline** 
 
 ---
 
-## 🛡️ Security Features
+##  Security Features
 
 ### Current (Demo Mode)
-- ✅ Client-side only processing
-- ✅ Local data storage (IndexedDB)
-- ✅ No external dependencies
-- ✅ No tracking or analytics
-- ✅ HTTPS-ready
+-  Client-side only processing
+-  Local data storage (IndexedDB)
+-  No external dependencies
+-  No tracking or analytics
+-  HTTPS-ready
 
 ### Production Requirements
-- 🔒 **Encrypt local database** (Web Crypto API)
-- 🔒 **Add authentication** (SSO/LDAP)
-- 🔒 **Role-based access control**
-- 🔒 **Content Security Policy**
-- 🔒 **Audit logging**
-- 🔒 **Input sanitization**
+-  **Encrypt local database** (Web Crypto API)
+-  **Add authentication** (SSO/LDAP)
+-  **Role-based access control**
+-  **Content Security Policy**
+-  **Audit logging**
+-  **Input sanitization**
 
-⚠️ **Note**: Current version is for DEMONSTRATION only. Do NOT use for sensitive/classified data without security hardening.
+ **Note**: Current version is for DEMONSTRATION only. Do NOT use for sensitive/classified data without security hardening.
 
 ---
 
-## 📖 Documentation
+##  Documentation
 
 | Document | Purpose |
 |----------|---------|
@@ -291,7 +291,7 @@ VITE_MAX_DB_SIZE=52428800
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Unit tests (if configured)
@@ -311,7 +311,7 @@ npm run test:e2e
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Issue: App won't load
 **Solution**: Check browser console for errors. Ensure JavaScript is enabled.
@@ -336,7 +336,7 @@ npm run test:e2e
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 This is a demonstration application for critical infrastructure security. 
 
@@ -348,15 +348,7 @@ For production use:
 
 ---
 
-## 📄 License
-
-**Proprietary / Internal Use Only**
-
-This application is designed for critical infrastructure protection. Distribution outside authorized organizations is prohibited.
-
----
-
-## 🆘 Support
+##  Support
 
 ### For Users
 - **User Guide**: [USER_GUIDE.md](./USER_GUIDE.md)
@@ -372,7 +364,7 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## 📈 Roadmap
+##  Roadmap
 
 ### Current Version: 1.0.0
 - ✅ Offline-first PWA
@@ -395,7 +387,7 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## 🌟 Key Metrics
+##  Key Metrics
 
 - **Detection Rate**: > 90% (with proper training data)
 - **False Positive Rate**: < 10% (tunable via patterns)
@@ -405,9 +397,9 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## 🏆 Use Cases
+##  Use Cases
 
-### ✅ Ideal For:
+###  Ideal For:
 - Power grid control rooms
 - Railway operation centers
 - Oil & gas field sites
@@ -416,7 +408,7 @@ This application is designed for critical infrastructure protection. Distributio
 - Maritime operations
 - Manufacturing facilities
 
-### ❌ Not Suitable For:
+###  Not Suitable For:
 - Consumer applications
 - High-volume email gateways
 - Real-time email filtering
@@ -424,7 +416,7 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## 🎓 Training
+##  Training
 
 ### Getting Started (15 minutes)
 1. Watch demo video (if available)
@@ -446,7 +438,7 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## ⚡ Quick Reference
+##  Quick Reference
 
 ### Common Tasks
 
@@ -473,25 +465,7 @@ This application is designed for critical infrastructure protection. Distributio
 
 ---
 
-## 🔗 Related Projects
-
-- **TensorFlow.js** - ML model runtime (future)
-- **ONNX Runtime** - Alternative ML runtime
-- **Recharts** - Chart library
-- **IndexedDB** - Browser database
-- **Service Workers** - Offline functionality
-
----
-
-## 📞 Emergency Contacts
-
-**Security Incident**: [Your SOC contact]  
-**Technical Support**: [Your IT contact]  
-**System Admin**: [Your admin contact]
-
----
-
-## ✅ Pre-Flight Checklist
+##  Pre-Flight Checklist
 
 Before deploying to production:
 
@@ -507,9 +481,3 @@ Before deploying to production:
 - [ ] Rollback plan ready
 
 ---
-
-**Built with ❤️ for Critical Infrastructure Security**
-
-**Version**: 1.0.0  
-**Status**: Production Ready ✅  
-**Last Updated**: February 12, 2026
