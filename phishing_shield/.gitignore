@@ -66,3 +66,13 @@ local_settings.py
 *.orig
 
 scripts/*.sh
+
+# Frontend / PWA artifacts (ignore Node.js build outputs and caches)
+PWA_frontend/node_modules
+PWA_frontend/dist/
+PWA_frontend/build/
+PWA_frontend/.next/
+PWA_frontend/out/ PWA_frontend/.nuxt/ PWA_frontend/.parcel-cache/ PWA_frontend/.cache/ PWA_frontend/.pnp.cjs PWA_frontend/.pnp.js # Local frontend env and debug logs 
+PWA_frontend/.env.local PWA_frontend/.env.*.local PWA_frontend/npm-debug.log* PWA_frontend/yarn-debug.log* PWA_frontend/yarn-error.log* # Generated service worker / runtime caches PWA_frontend/public/sw.js 
+frontend/public/service-worker.js
+frontend/public/workbox-*.js
