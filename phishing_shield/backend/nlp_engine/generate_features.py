@@ -4,7 +4,7 @@ import csv
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from backend.nlp_engine.vectorizer import EnhancedVectorizer
+from vectorizer import EnhancedVectorizer
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
