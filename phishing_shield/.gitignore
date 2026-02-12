@@ -64,3 +64,5 @@ local_settings.py
 
 # Misc
 *.orig
+
+scripts/*.sh
