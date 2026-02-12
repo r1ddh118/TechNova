@@ -1,4 +1,4 @@
-# 🛡️ PhishGuard AI
+#  PhishGuard AI
 
 > **Offline-First Progressive Web App for AI-Powered Phishing Detection in Critical Infrastructure**
 
