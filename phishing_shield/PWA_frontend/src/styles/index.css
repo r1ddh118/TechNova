@@ -2,4 +2,41 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* Apply dark mode by default for security console */
+html {
+  color-scheme: dark;
+}
 
+html.dark body {
+  background-color: #0a0c0f;
+  color: #e8e6e3;
+}
+
+body {
+  background-color: #faf8f6;
+  color: #2c2925;
+}
+
+/* Map zinc colors to theme-aware colors */
+@theme {
+  --color-zinc-50: light-dark(#fafafa, #18181b);
+  --color-zinc-100: light-dark(#f4f4f5, #27272a);
+  --color-zinc-200: light-dark(#e4e4e7, #3f3f46);
+  --color-zinc-300: light-dark(#d4d4d8, #52525b);
+  --color-zinc-400: light-dark(#a1a1aa, var(--muted-foreground));
+  --color-zinc-500: light-dark(#71717a, var(--muted-foreground));
+  --color-zinc-600: light-dark(#52525b, #a1a1aa);
+  --color-zinc-700: light-dark(#3f3f46, var(--border));
+  --color-zinc-800: light-dark(#27272a, var(--border));
+  --color-zinc-900: light-dark(#18181b, var(--card));
+  --color-zinc-950: light-dark(#09090b, var(--background));
+  
+  --color-red-400: var(--chart-1);
+  --color-red-500: var(--chart-1);
+  --color-red-600: var(--primary);
+  --color-red-700: var(--primary);
+  
+  --color-green-500: var(--chart-5);
+  --color-yellow-500: var(--chart-3);
+  --color-blue-500: var(--primary);
+}
