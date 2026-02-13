@@ -110,9 +110,15 @@ def main(argv=sys.argv):
         'suspicious_url_score': r.get('suspicious_url_score', 0),
         'urgency_score': r.get('urgency_score', 0),
         'impersonation_score': r.get('impersonation_score', 0),
+        'credential_request_score': r.get('credential_request_score', 0),
+        'ip_url_count': r.get('ip_url_count', 0),
+        'shortener_url_count': r.get('shortener_url_count', 0),
+        'suspicious_subdomain_count': r.get('suspicious_subdomain_count', 0),
+        'lookalike_domain_count': r.get('lookalike_domain_count', 0),
         'digit_count': r.get('digit_count', 0),
         'text_length': r.get('length', 0),
-        'email_addresses': ';'.join(r.get('email_addresses', [])) if r.get('email_addresses') else ''
+        'email_addresses': ';'.join(r.get('email_addresses', [])) if r.get('email_addresses') else '',
+        'explanations': ' | '.join([f"{item.get('feature')}:{item.get('reason')}" for item in r.get('explanations', [])])
     } for r in records])
 
     # Fit vectorizer and produce sparse matrix
