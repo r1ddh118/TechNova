@@ -6,6 +6,15 @@ ORG_KEYWORDS = [
     "security team",
     "it department",
     "administrator",
+    "compliance team",
+    "fraud department",
+    "billing team",
+    "human resources",
+    "payroll",
+    "ceo",
+    "cfo",
+    "help desk",
+    "customer care",
 ]
 
 
