@@ -7,9 +7,10 @@ from scipy.sparse import csr_matrix, hstack
 
 # relative imports inside backend.nlp_engine
 from backend.nlp_engine.preprocess import clean_text
-from backend.nlp_engine.url_analyzer import url_features
+from backend.nlp_engine.url_analyzer import url_features, analyze_urls
 from backend.nlp_engine.urgency_detector import urgency_score
 from backend.nlp_engine.impersonation_detector import impersonation_score
+from backend.nlp_engine.credential_detector import credential_request_score
 
 
 def _tokenize_no_clean(text: str):
@@ -23,7 +24,10 @@ def _identity(x):
 class EnhancedVectorizer:
     """TF-IDF + engineered numeric security features pipeline for backend use.
 
-    Numeric features: [url_count, suspicious_url_score, urgency, impersonation, digit_count, length]
+    Numeric features:
+    [url_count, suspicious_url_score, ip_url_count, shortener_url_count,
+     suspicious_subdomain_count, lookalike_domain_count, urgency_score,
+     impersonation_score, credential_request_score, digit_count, length]
     """
 
     def __init__(self, max_features: int = 2000, ngram_range=(1, 2)):
@@ -36,14 +40,27 @@ class EnhancedVectorizer:
     def _numeric_features(self, cleaned_texts):
         rows = []
         for t in cleaned_texts:
-            u_count, u_susp = url_features(t)
+            url_info = analyze_urls(t)
             urgency = urgency_score(t)
             impersonation = impersonation_score(t)
+            credential_score = credential_request_score(t)
             digit_count = sum(c.isdigit() for c in t)
             length = len(t)
-            rows.append([u_count, u_susp, urgency, impersonation, digit_count, length])
+            rows.append([
+                url_info.get('url_count', 0),
+                url_info.get('suspicious_score', 0),
+                url_info.get('ip_url_count', 0),
+                url_info.get('shortener_url_count', 0),
+                url_info.get('suspicious_subdomain_count', 0),
+                url_info.get('lookalike_domain_count', 0),
+                urgency,
+                impersonation,
+                credential_score,
+                digit_count,
+                length,
+            ])
         if not rows:
-            return np.empty((0, 6), dtype=float)
+            return np.empty((0, 11), dtype=float)
         return np.asarray(rows, dtype=float)
 
     def fit(self, texts):
