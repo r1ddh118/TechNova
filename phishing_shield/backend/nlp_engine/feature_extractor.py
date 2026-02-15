@@ -1,7 +1,7 @@
-from preprocess import clean_text, extract_urls, extract_email_addresses, combine_subject_body
-from url_analyzer import url_features
-from urgency_detector import urgency_score
-from impersonation_detector import impersonation_score
+from backend.nlp_engine.preprocess import clean_text, extract_urls, extract_email_addresses, combine_subject_body
+from backend.nlp_engine.url_analyzer import url_features
+from backend.nlp_engine.urgency_detector import urgency_score
+from backend.nlp_engine.impersonation_detector import impersonation_score
 from typing import Union, Dict, Any
 
 
