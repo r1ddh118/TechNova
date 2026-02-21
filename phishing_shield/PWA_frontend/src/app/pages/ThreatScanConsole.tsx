@@ -86,6 +86,36 @@ const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
   }
 };
 
+const handleDownloadReport = () => {
+  if (!result) return;
+
+  const data = {
+    messageType,
+    content: inputText,
+    verdict: result.prediction,
+    confidence: result.confidence,
+    riskLevel: result.riskLevel,
+    triggeredFeatures: result.triggeredFeatures
+      .filter(f => f.detected)
+      .map(f => f.name),
+    timestamp: new Date(),
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `scan-report-${Date.now()}.json`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+};
+
 const handleSaveToLog = async () => {
   if (!result) return;
 
@@ -108,6 +138,7 @@ const handleSaveToLog = async () => {
     toast.error('Failed to save scan');
   }
 };
+
 
 const handleMarkIncident = async () => {
   if (!result) return;
@@ -470,13 +501,15 @@ const getRiskConfig = (risk: string) => {
                     >
                       <Save className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-zinc-700"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-zinc-700"
+                        onClick={handleDownloadReport}
+                          >
+                          <Download className="w-4 h-4" />
+                          </Button>
+
                   </div>
                 </div>
               )
