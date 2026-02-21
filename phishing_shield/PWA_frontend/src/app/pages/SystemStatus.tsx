@@ -25,6 +25,15 @@ export function SystemStatus() {
   const [dbSize, setDbSize] = useState(0);
   const [scanCount, setScanCount] = useState(0);
   const [checking, setChecking] = useState(false);
+ 
+  const __diagnosticInfo = {
+  build: "phishguard-ai",
+  mode: "offline-first",
+  timestamp: Date.now(),
+  };
+// reference to avoid unused variable warnings
+  void __diagnosticInfo;
+
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
