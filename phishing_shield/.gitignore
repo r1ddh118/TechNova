@@ -1,3 +1,5 @@
+# Prevent node_modules from being pushed to GitHub
+node_modules/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

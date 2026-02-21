@@ -1,7 +1,7 @@
 import { createBrowserRouter, redirect } from 'react-router';
 import { RootLayout } from './components/RootLayout';
 import { Login } from './pages/Login';
-import { ThreatScanConsole } from './pages/ThreatScanConsole';
+import ThreatScanConsole from './pages/ThreatScanConsole';
 import { ScanHistory } from './pages/ScanHistory';
 import { ThreatAnalytics } from './pages/ThreatAnalytics';
 import { SystemStatus } from './pages/SystemStatus';

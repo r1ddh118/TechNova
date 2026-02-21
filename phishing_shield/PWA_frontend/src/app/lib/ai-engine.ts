@@ -1,5 +1,25 @@
-// Mock AI Inference Engine for Phishing Detection
-// In production, this would call a TensorFlow.js or ONNX model
+// Batch scan API integration
+export interface BatchScanResult {
+  batch_results: Array<{
+    text_preview: string;
+    is_phishing: boolean;
+    confidence: number;
+    risk_level: string;
+  }>;
+  total_scanned: number;
+}
+
+export async function analyzeBatch(messages: string[]): Promise<BatchScanResult> {
+  const response = await fetch("http://localhost:8000/batch-scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texts: messages }),
+  });
+  if (!response.ok) throw new Error("Batch scan failed");
+  return await response.json();
+}
+// AI Inference Engine for Phishing Detection
+// Calls FastAPI backend, falls back to mock if offline or error
 
 export interface InferenceResult {
   prediction: 'safe' | 'suspicious' | 'phishing';
@@ -117,58 +137,74 @@ function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
 }
 
 export async function analyzeMessage(content: string): Promise<InferenceResult> {
-  // Simulate processing delay for realistic UX
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const features = analyzeContent(content);
-  const detectedFeatures = features.filter(f => f.detected);
-  
-  // Calculate risk score
-  let riskScore = 0;
-  features.forEach(f => {
-    if (f.detected) {
-      riskScore += f.severity;
+  // Try backend API first
+  try {
+    const response = await fetch("http://localhost:8000/scan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text: content })
+    });
+    if (!response.ok) throw new Error("Backend unavailable");
+    const data = await response.json();
+    // Map backend response to frontend InferenceResult
+    return {
+      prediction: data.is_phishing ? "phishing" : (data.risk_level === "Medium" ? "suspicious" : "safe"),
+      confidence: data.confidence,
+      riskLevel: data.risk_level.toLowerCase() as InferenceResult["riskLevel"],
+      triggeredFeatures: (data.explanations || []).map((ex: any) => ({
+        name: ex.feature || "feature",
+        detected: true,
+        severity: 0.8
+      })),
+      explanation: Array.isArray(data.explanations) ? data.explanations.map((ex: any) => ex.reason).join("; ") : "Analysis complete"
+    };
+  } catch (err) {
+    // Fallback to mock if offline or error
+    // Simulate processing delay for realistic UX
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const features = analyzeContent(content);
+    const detectedFeatures = features.filter(f => f.detected);
+    let riskScore = 0;
+    features.forEach(f => {
+      if (f.detected) {
+        riskScore += f.severity;
+      }
+    });
+    const normalizedScore = Math.min(riskScore / 3, 1);
+    let prediction: InferenceResult['prediction'];
+    let riskLevel: InferenceResult['riskLevel'];
+    let confidence: number;
+    if (normalizedScore < 0.3) {
+      prediction = 'safe';
+      riskLevel = 'low';
+      confidence = 0.85 + Math.random() * 0.1;
+    } else if (normalizedScore < 0.6) {
+      prediction = 'suspicious';
+      riskLevel = detectedFeatures.length > 2 ? 'medium' : 'low';
+      confidence = 0.7 + Math.random() * 0.15;
+    } else {
+      prediction = 'phishing';
+      riskLevel = detectedFeatures.length > 3 ? 'critical' : 'high';
+      confidence = 0.8 + Math.random() * 0.15;
     }
-  });
-
-  const normalizedScore = Math.min(riskScore / 3, 1);
-
-  // Determine prediction
-  let prediction: InferenceResult['prediction'];
-  let riskLevel: InferenceResult['riskLevel'];
-  let confidence: number;
-
-  if (normalizedScore < 0.3) {
-    prediction = 'safe';
-    riskLevel = 'low';
-    confidence = 0.85 + Math.random() * 0.1;
-  } else if (normalizedScore < 0.6) {
-    prediction = 'suspicious';
-    riskLevel = detectedFeatures.length > 2 ? 'medium' : 'low';
-    confidence = 0.7 + Math.random() * 0.15;
-  } else {
-    prediction = 'phishing';
-    riskLevel = detectedFeatures.length > 3 ? 'critical' : 'high';
-    confidence = 0.8 + Math.random() * 0.15;
+    let explanation = '';
+    if (prediction === 'safe') {
+      explanation = 'No significant phishing indicators detected. Message appears legitimate.';
+    } else if (prediction === 'suspicious') {
+      explanation = `Detected ${detectedFeatures.length} suspicious indicator(s): ${detectedFeatures.map(f => f.name).join(', ')}. Exercise caution.`;
+    } else {
+      explanation = `High-confidence phishing attempt. Multiple red flags detected: ${detectedFeatures.map(f => f.name).join(', ')}. Do not interact.`;
+    }
+    return {
+      prediction,
+      confidence: Math.min(confidence, 0.99),
+      riskLevel,
+      triggeredFeatures: features,
+      explanation,
+    };
   }
-
-  // Generate explanation
-  let explanation = '';
-  if (prediction === 'safe') {
-    explanation = 'No significant phishing indicators detected. Message appears legitimate.';
-  } else if (prediction === 'suspicious') {
-    explanation = `Detected ${detectedFeatures.length} suspicious indicator(s): ${detectedFeatures.map(f => f.name).join(', ')}. Exercise caution.`;
-  } else {
-    explanation = `High-confidence phishing attempt. Multiple red flags detected: ${detectedFeatures.map(f => f.name).join(', ')}. Do not interact.`;
-  }
-
-  return {
-    prediction,
-    confidence: Math.min(confidence, 0.99),
-    riskLevel,
-    triggeredFeatures: features,
-    explanation,
-  };
 }
 
 // Model metadata

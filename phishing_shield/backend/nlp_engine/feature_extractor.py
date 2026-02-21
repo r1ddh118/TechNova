@@ -1,8 +1,8 @@
-from preprocess import clean_text, extract_urls, extract_email_addresses, combine_subject_body
-from url_analyzer import url_features, analyze_urls
-from urgency_detector import urgency_score
-from impersonation_detector import impersonation_score
-from credential_detector import credential_request_score
+from .preprocess import clean_text, extract_urls, extract_email_addresses, combine_subject_body
+from .url_analyzer import url_features, analyze_urls
+from .urgency_detector import urgency_score
+from .impersonation_detector import impersonation_score
+from .credential_detector import credential_request_score
 from typing import Union, Dict, Any
 
 
@@ -110,4 +110,5 @@ def to_vector(features: dict):
         features.get('credential_request_score', 0),
         features.get('digit_count', 0),
         features.get('length', 0),
+        features.get('text_length', features.get('length', 0)),  # Add as 12th feature
     ]
