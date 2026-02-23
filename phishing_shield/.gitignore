@@ -181,3 +181,5 @@ frontend/public/workbox-*.js
 
 # Misc
 *.orig
+
+backend/storage.db

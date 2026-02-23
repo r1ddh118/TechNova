@@ -56,6 +56,9 @@ phishing_shield/
 ## API Endpoints
 - `POST /scan`         : Analyze a single message
 - `POST /batch-scan`   : Analyze multiple messages
+- `GET /health`        : API/model/vectorizer/database status
+- `POST /credentials`  : Store credential profile (Google/email account supported; password hashed)
+- `GET /credentials`   : List stored credential profiles
 
 ## Security & Best Practices
 - Sensitive data never leaves the device during scan
