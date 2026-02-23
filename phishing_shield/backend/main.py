@@ -38,6 +38,35 @@ vectorizer: Optional[EnhancedVectorizer] = None
 EXPECTED_FEATURES = 12
 
 
+LOW_RISK_MAX = 0.35
+HIGH_RISK_MIN = 0.7
+
+
+def _triage_percentages(probability: float) -> Dict[str, float]:
+    p = min(max(float(probability), 0.0), 1.0)
+
+    safe_raw = max(0.0, 1.0 - (p / LOW_RISK_MAX)) if LOW_RISK_MAX else 0.0
+    phishing_raw = max(0.0, (p - LOW_RISK_MAX) / (1.0 - LOW_RISK_MAX))
+
+    if p <= LOW_RISK_MAX:
+        suspicious_raw = p / LOW_RISK_MAX
+    elif p >= HIGH_RISK_MIN:
+        suspicious_raw = max(0.0, (1.0 - p) / (1.0 - HIGH_RISK_MIN))
+    else:
+        midpoint = (LOW_RISK_MAX + HIGH_RISK_MIN) / 2
+        radius = (HIGH_RISK_MIN - LOW_RISK_MAX) / 2
+        suspicious_raw = max(0.0, 1.0 - abs(p - midpoint) / radius)
+
+    total = safe_raw + suspicious_raw + phishing_raw
+    if total <= 0:
+        return {"safe": 0.0, "suspicious": 0.0, "phishing": 100.0}
+
+    return {
+        "safe": round((safe_raw / total) * 100, 2),
+        "suspicious": round((suspicious_raw / total) * 100, 2),
+        "phishing": round((phishing_raw / total) * 100, 2),
+    }
+
 class ScanRequest(BaseModel):
     text: str = Field(..., min_length=5, description="Email/message content")
 
@@ -157,9 +186,9 @@ def _apply_hybrid_risk(ml_confidence: float, features: Dict[str, Any]) -> Dict[s
         risk = "High"
     elif features.get("urgency_score", 0) > 0 and features.get("impersonation_score", 0) > 0:
         risk = "High"
-    elif hybrid_score >= 0.65:
+    elif hybrid_score >= HIGH_RISK_MIN:
         risk = "High"
-    elif hybrid_score >= 0.35:
+    elif hybrid_score >= LOW_RISK_MAX:
         risk = "Medium"
     else:
         risk = "Low"
@@ -188,13 +217,21 @@ def _predict(text: str) -> Dict[str, Any]:
 
     hybrid = _apply_hybrid_risk(probability, features_dict)
 
+    triage_percentages = _triage_percentages(probability)
+
     return {
         "is_phishing": bool(prediction),
+        "predicted_class": "phishing" if probability >= HIGH_RISK_MIN else "suspicious" if probability >= LOW_RISK_MAX else "safe",
         "confidence": round(probability, 4),
         "risk_level": hybrid["risk_level"],
         "hybrid_score": hybrid["hybrid_score"],
         "rule_score": hybrid["rule_score"],
+        "class_percentages": triage_percentages,
+        "confidence_percentage": round(probability * 100, 2),
+        "low_risk_percentage": round(max(0.0, (LOW_RISK_MAX - probability) / LOW_RISK_MAX) * 100, 2) if probability < LOW_RISK_MAX else 0.0,
+        "high_risk_percentage": round(max(0.0, (probability - LOW_RISK_MAX) / (1 - LOW_RISK_MAX)) * 100, 2),
         "explanations": features_dict.get("explanations", []),
+        "problematic_lines": features_dict.get("line_highlights", []),
     }
 
 
