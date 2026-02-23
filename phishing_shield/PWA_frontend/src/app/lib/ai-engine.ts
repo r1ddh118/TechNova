@@ -1,10 +1,26 @@
 // Batch scan API integration
+export interface ExplainabilityEntry {
+  feature: string;
+  value: number;
+  reason: string;
+  contribution_percent?: number;
+}
+
+export interface HighlightedLine {
+  line_number: number;
+  line: string;
+  indicators: string[];
+}
+
 export interface BatchScanResult {
   batch_results: Array<{
     text_preview: string;
     is_phishing: boolean;
     confidence: number;
     risk_level: string;
+    explanations?: ExplainabilityEntry[];
+    highlighted_lines?: HighlightedLine[];
+    class_percentages?: Record<string, number>;
   }>;
   total_scanned: number;
 }
@@ -35,6 +51,16 @@ export async function analyzeBatch(messages: string[]): Promise<BatchScanResult>
           is_phishing: result.prediction === 'phishing',
           confidence: result.confidence,
           risk_level: result.riskLevel,
+          explanations: result.triggeredFeatures
+            .filter((feature) => feature.detected)
+            .map((feature) => ({
+              feature: feature.name,
+              value: Number((feature.severity * 10).toFixed(2)),
+              reason: feature.reason || 'Detected by local fallback pattern matching.',
+              contribution_percent: feature.contributionPercent,
+            })),
+          highlighted_lines: result.highlightedLines,
+          class_percentages: result.classPercentages,
         };
       }),
     );
@@ -56,8 +82,12 @@ export interface InferenceResult {
     name: string;
     detected: boolean;
     severity: number;
+    reason?: string;
+    contributionPercent?: number;
   }[];
   explanation: string;
+  highlightedLines: HighlightedLine[];
+  classPercentages: Record<string, number>;
 }
 
 const PHISHING_PATTERNS = {
@@ -177,17 +207,29 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
     const data = await response.json();
     // Map backend response to frontend InferenceResult
     return {
-      prediction: data.is_phishing ? 'phishing' : data.risk_level === 'Medium' ? 'suspicious' : 'safe',
+      prediction:
+        data.risk_level === 'High'
+          ? 'phishing'
+          : data.risk_level === 'Medium'
+            ? 'suspicious'
+            : 'safe',
       confidence: data.confidence,
       riskLevel: data.risk_level.toLowerCase() as InferenceResult['riskLevel'],
       triggeredFeatures: (data.explanations || []).map((ex: any) => ({
         name: ex.feature || 'feature',
         detected: true,
-        severity: 0.8,
+        severity: Math.min(1, Number(ex.value || 0) / 10),
+        reason: ex.reason || 'Indicator detected',
+        contributionPercent: Number(ex.contribution_percent || 0),
       })),
       explanation: Array.isArray(data.explanations)
         ? data.explanations.map((ex: any) => ex.reason).join('; ')
         : 'Analysis complete',
+      highlightedLines: Array.isArray(data.highlighted_lines) ? data.highlighted_lines : [],
+      classPercentages:
+        typeof data.class_percentages === 'object' && data.class_percentages !== null
+          ? data.class_percentages
+          : { safe: 0, suspicious: 0, phishing: Number((data.confidence || 0) * 100) },
     };
   } catch (err) {
     // Fallback to mock if offline or error
@@ -226,12 +268,31 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
     } else {
       explanation = `High-confidence phishing attempt. Multiple red flags detected: ${detectedFeatures.map((f) => f.name).join(', ')}. Do not interact.`;
     }
+    const classPercentages = {
+      safe: prediction === 'safe' ? 100 - Math.round(riskScore * 10) : Math.max(0, 25 - Math.round(riskScore * 5)),
+      suspicious: prediction === 'suspicious' ? 45 + detectedFeatures.length * 8 : Math.max(0, 20 + detectedFeatures.length * 5),
+      phishing: prediction === 'phishing' ? 60 + detectedFeatures.length * 7 : Math.max(0, Math.round(normalizedScore * 100)),
+    };
+
+    const total = classPercentages.safe + classPercentages.suspicious + classPercentages.phishing;
+    const normalizedPercentages = {
+      safe: Number(((classPercentages.safe / total) * 100).toFixed(2)),
+      suspicious: Number(((classPercentages.suspicious / total) * 100).toFixed(2)),
+      phishing: Number(((classPercentages.phishing / total) * 100).toFixed(2)),
+    };
+
     return {
       prediction,
       confidence: Math.min(confidence, 0.99),
       riskLevel,
-      triggeredFeatures: features,
+      triggeredFeatures: features.map((feature) => ({
+        ...feature,
+        reason: feature.detected ? 'Matched offline heuristic patterns.' : undefined,
+        contributionPercent: feature.detected ? Number((feature.severity * 20).toFixed(2)) : 0,
+      })),
       explanation,
+      highlightedLines: [],
+      classPercentages: normalizedPercentages,
     };
   }
 }

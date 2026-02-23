@@ -107,6 +107,8 @@ class AuditLogResponse(BaseModel):
     confidence: float
     rule_score: int
     explanations: List[Dict[str, Any]]
+    highlighted_lines: List[Dict[str, Any]]
+    class_percentages: Dict[str, float]
 
 
 def init_db() -> None:
@@ -126,6 +128,17 @@ def init_db() -> None:
             )
             """
         )
+
+        existing_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(audit_logs)").fetchall()
+        }
+
+        if "highlighted_lines_json" not in existing_columns:
+            conn.execute("ALTER TABLE audit_logs ADD COLUMN highlighted_lines_json TEXT NOT NULL DEFAULT '[]'")
+        if "class_percentages_json" not in existing_columns:
+            conn.execute(
+                "ALTER TABLE audit_logs ADD COLUMN class_percentages_json TEXT NOT NULL DEFAULT '{\"safe\":0,\"suspicious\":0,\"phishing\":0}'"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS credentials (
@@ -263,8 +276,18 @@ def _log_audit(mode: str, text: str, result: Dict[str, Any]) -> None:
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """
-            INSERT INTO audit_logs (created_at, mode, text_preview, risk_level, confidence, rule_score, explanations_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO audit_logs (
+                created_at,
+                mode,
+                text_preview,
+                risk_level,
+                confidence,
+                rule_score,
+                explanations_json,
+                highlighted_lines_json,
+                class_percentages_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now(timezone.utc).isoformat(),
@@ -274,6 +297,8 @@ def _log_audit(mode: str, text: str, result: Dict[str, Any]) -> None:
                 result["confidence"],
                 int(result.get("rule_score", 0)),
                 json.dumps(result.get("explanations", [])),
+                json.dumps(result.get("highlighted_lines", [])),
+                json.dumps(result.get("class_percentages", {})),
             ),
         )
 
@@ -283,7 +308,17 @@ def _load_recent_audit_logs(limit: int = 100) -> List[AuditLogResponse]:
     with sqlite3.connect(DB_PATH) as conn:
         rows = conn.execute(
             """
-            SELECT id, created_at, mode, text_preview, risk_level, confidence, rule_score, explanations_json
+            SELECT
+                id,
+                created_at,
+                mode,
+                text_preview,
+                risk_level,
+                confidence,
+                rule_score,
+                explanations_json,
+                COALESCE(highlighted_lines_json, '[]'),
+                COALESCE(class_percentages_json, '{"safe":0,"suspicious":0,"phishing":0}')
             FROM audit_logs
             ORDER BY id DESC
             LIMIT ?
@@ -298,6 +333,16 @@ def _load_recent_audit_logs(limit: int = 100) -> List[AuditLogResponse]:
         except json.JSONDecodeError:
             explanations = []
 
+        try:
+            highlighted_lines = json.loads(row[8]) if row[8] else []
+        except json.JSONDecodeError:
+            highlighted_lines = []
+
+        try:
+            class_percentages = json.loads(row[9]) if row[9] else {}
+        except json.JSONDecodeError:
+            class_percentages = {}
+
         logs.append(
             AuditLogResponse(
                 id=row[0],
@@ -308,6 +353,8 @@ def _load_recent_audit_logs(limit: int = 100) -> List[AuditLogResponse]:
                 confidence=float(row[5]),
                 rule_score=int(row[6]),
                 explanations=explanations if isinstance(explanations, list) else [],
+                highlighted_lines=highlighted_lines if isinstance(highlighted_lines, list) else [],
+                class_percentages=class_percentages if isinstance(class_percentages, dict) else {},
             )
         )
 

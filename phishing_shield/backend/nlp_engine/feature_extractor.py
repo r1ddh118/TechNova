@@ -35,15 +35,40 @@ EXPLAINABILITY_MAP = {
 
 def _build_explanations(features: Dict[str, Any]):
     reasons = []
+    weighted_total = 0.0
+
+    feature_weights = {
+        "url_count": 1.0,
+        "suspicious_url_score": 2.0,
+        "ip_url_count": 2.2,
+        "shortener_url_count": 1.3,
+        "suspicious_subdomain_count": 1.5,
+        "lookalike_domain_count": 2.0,
+        "urgency_score": 1.2,
+        "impersonation_score": 1.4,
+        "credential_request_score": 2.1,
+        "digit_count": 0.2,
+    }
+
+    interim = []
     for key, message in EXPLAINABILITY_MAP.items():
-        if features.get(key, 0) > 0:
-            reasons.append(
-                {
-                    "feature": key,
-                    "value": features.get(key),
-                    "reason": message,
-                }
-            )
+        value = float(features.get(key, 0) or 0)
+        if value > 0:
+            weighted = value * feature_weights.get(key, 1.0)
+            weighted_total += weighted
+            interim.append((key, value, message, weighted))
+
+    for key, value, message, weighted in interim:
+        contribution_percent = (weighted / weighted_total * 100.0) if weighted_total > 0 else 0.0
+        reasons.append(
+            {
+                "feature": key,
+                "value": value,
+                "reason": message,
+                "contribution_percent": round(contribution_percent, 2),
+            }
+        )
+
     return reasons
 
 
