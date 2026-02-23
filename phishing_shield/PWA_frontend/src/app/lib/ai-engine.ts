@@ -18,13 +18,32 @@ export interface UpdateCheckResult {
 }
 
 export async function analyzeBatch(messages: string[]): Promise<BatchScanResult> {
-  const response = await fetch('http://localhost:8000/batch-scan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ texts: messages }),
-  });
-  if (!response.ok) throw new Error('Batch scan failed');
-  return await response.json();
+  try {
+    const response = await fetch('http://localhost:8000/batch-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: messages }),
+    });
+    if (!response.ok) throw new Error('Batch scan failed');
+    return await response.json();
+  } catch {
+    const batchResults = await Promise.all(
+      messages.map(async (message) => {
+        const result = await analyzeMessage(message);
+        return {
+          text_preview: message.slice(0, 120),
+          is_phishing: result.prediction === 'phishing',
+          confidence: result.confidence,
+          risk_level: result.riskLevel,
+        };
+      }),
+    );
+
+    return {
+      batch_results: batchResults,
+      total_scanned: batchResults.length,
+    };
+  }
 }
 // AI Inference Engine for Phishing Detection
 // Calls FastAPI backend, falls back to mock if offline or error
@@ -218,11 +237,21 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
 }
 
 export async function checkForUpdates(): Promise<UpdateCheckResult> {
-  const response = await fetch('http://localhost:8000/updates/check');
-  if (!response.ok) {
-    throw new Error('Failed to check updates');
+  try {
+    const response = await fetch('http://localhost:8000/updates/check');
+    if (!response.ok) {
+      throw new Error('Failed to check updates');
+    }
+    return response.json();
+  } catch {
+    return {
+      status: 'offline-fallback',
+      model_loaded: true,
+      vectorizer_loaded: true,
+      model_version: MODEL_INFO.version,
+      last_updated: MODEL_INFO.lastUpdate,
+    };
   }
-  return response.json();
 }
 
 // Model metadata
