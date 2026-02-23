@@ -1,4 +1,5 @@
 import hashlib
+import json
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -66,6 +67,17 @@ class CredentialResponse(BaseModel):
     google_email: str
     username: Optional[str]
     created_at: str
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    created_at: str
+    mode: str
+    text_preview: str
+    risk_level: str
+    confidence: float
+    rule_score: int
+    explanations: List[Dict[str, Any]]
 
 
 def init_db() -> None:
@@ -200,9 +212,45 @@ def _log_audit(mode: str, text: str, result: Dict[str, Any]) -> None:
                 result["risk_level"],
                 result["confidence"],
                 int(result.get("rule_score", 0)),
-                str(result.get("explanations", [])),
+                json.dumps(result.get("explanations", [])),
             ),
         )
+
+
+def _load_recent_audit_logs(limit: int = 100) -> List[AuditLogResponse]:
+    safe_limit = max(1, min(limit, 500))
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            """
+            SELECT id, created_at, mode, text_preview, risk_level, confidence, rule_score, explanations_json
+            FROM audit_logs
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+
+    logs: List[AuditLogResponse] = []
+    for row in rows:
+        try:
+            explanations = json.loads(row[7]) if row[7] else []
+        except json.JSONDecodeError:
+            explanations = []
+
+        logs.append(
+            AuditLogResponse(
+                id=row[0],
+                created_at=row[1],
+                mode=row[2],
+                text_preview=row[3],
+                risk_level=row[4],
+                confidence=float(row[5]),
+                rule_score=int(row[6]),
+                explanations=explanations if isinstance(explanations, list) else [],
+            )
+        )
+
+    return logs
 
 
 @app.on_event("startup")
@@ -220,6 +268,31 @@ def health_check() -> Dict[str, Any]:
         "expected_features": EXPECTED_FEATURES,
         "db_path": str(DB_PATH),
         "api_version": app.version,
+    }
+
+
+@app.get("/history", response_model=List[AuditLogResponse])
+def get_history(limit: int = 100) -> List[AuditLogResponse]:
+    return _load_recent_audit_logs(limit)
+
+
+@app.get("/updates/check")
+def check_updates() -> Dict[str, Any]:
+    latest_artifact_time = max(
+        MODEL_PATH.stat().st_mtime if MODEL_PATH.exists() else 0,
+        VECTORIZER_PATH.stat().st_mtime if VECTORIZER_PATH.exists() else 0,
+    )
+    last_updated = (
+        datetime.fromtimestamp(latest_artifact_time, tz=timezone.utc).isoformat()
+        if latest_artifact_time
+        else None
+    )
+    return {
+        "status": "up_to_date",
+        "model_loaded": model is not None,
+        "vectorizer_loaded": vectorizer is not None,
+        "model_version": app.version,
+        "last_updated": last_updated,
     }
 
 
