@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { 
   Shield, 
   AlertTriangle, 
@@ -42,6 +42,7 @@ const handleScan = async () => {
     try {
       const res = await analyzeBatch(batchInput);
       setBatchResults(res);
+      setSelectedBatchResult(0);
     } catch (error) {
       toast.error('Batch scan failed.');
     } finally {
@@ -238,6 +239,24 @@ const getRiskConfig = (risk: string) => {
       return { color: 'text-zinc-500', bg: 'bg-zinc-500' };
   }
 };
+
+
+const formatBatchRisk = (riskLevel: string) => {
+  const normalized = String(riskLevel || '').toLowerCase();
+  if (normalized === 'critical') return 'Critical';
+  if (normalized === 'high') return 'High';
+  if (normalized === 'medium') return 'Medium';
+  if (normalized === 'low') return 'Low';
+  return 'Unknown';
+};
+
+const [selectedBatchResult, setSelectedBatchResult] = useState<number | null>(null);
+
+const activeBatchResult = useMemo(() => {
+  if (!batchResults || batchResults.batch_results.length === 0) return null;
+  const index = selectedBatchResult ?? 0;
+  return batchResults.batch_results[index] || null;
+}, [batchResults, selectedBatchResult]);
 
   return (
     <div className="h-full overflow-auto">
@@ -578,20 +597,63 @@ const getRiskConfig = (risk: string) => {
                   </label>
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {batchResults.batch_results.map((res, idx) => (
-                      <div key={idx} className="p-3 rounded border bg-zinc-900 border-zinc-800 flex flex-col gap-1">
+                      <div key={idx} onClick={() => setSelectedBatchResult(idx)} className={`p-3 rounded border bg-zinc-900 flex flex-col gap-1 cursor-pointer ${selectedBatchResult === idx ? 'border-red-500/60' : 'border-zinc-800'}`}>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-zinc-400 flex-1 truncate">{res.text_preview}</span>
                           <Badge className={res.is_phishing ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}>
                             {res.is_phishing ? 'Phishing' : 'Safe'}
                           </Badge>
                           <span className="text-xs text-zinc-400 ml-2">{(res.confidence * 100).toFixed(1)}%</span>
-                          <Badge className={`ml-2 ${res.risk_level === 'High' ? 'bg-red-500' : res.risk_level === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'} text-white`}>
-                            {res.risk_level}
+                          <Badge className={`ml-2 ${formatBatchRisk(res.risk_level) === 'High' || formatBatchRisk(res.risk_level) === 'Critical' ? 'bg-red-500' : formatBatchRisk(res.risk_level) === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'} text-white`}>
+                            {formatBatchRisk(res.risk_level)}
                           </Badge>
                         </div>
                       </div>
                     ))}
                   </div>
+
+                  {activeBatchResult && (
+                    <div className="mt-3 p-3 rounded border border-zinc-800 bg-zinc-950 space-y-3">
+                      <p className="text-xs uppercase tracking-wider text-zinc-500">Selected message explainability</p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {Object.entries(activeBatchResult.class_percentages || {}).map(([label, percent]) => (
+                          <div key={label} className="p-2 rounded border border-zinc-800 bg-zinc-900">
+                            <p className="text-[11px] text-zinc-500 capitalize">{label}</p>
+                            <p className="text-sm font-semibold">{Number(percent).toFixed(1)}%</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[11px] text-zinc-500 uppercase tracking-wider">Indicators</p>
+                        {(activeBatchResult.explanations || []).length === 0 ? (
+                          <p className="text-xs text-zinc-500">No indicator explanations for this message.</p>
+                        ) : (
+                          (activeBatchResult.explanations || []).map((item, itemIndex) => (
+                            <div key={`${item.feature}-${itemIndex}`} className="p-2 rounded border border-zinc-800 bg-zinc-900">
+                              <p className="text-xs text-zinc-200">{item.feature || 'Indicator'}</p>
+                              <p className="text-[11px] text-zinc-400 mt-1">{item.reason || 'No reason provided'}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[11px] text-zinc-500 uppercase tracking-wider">Highlighted suspicious lines</p>
+                        {(activeBatchResult.highlighted_lines || []).length === 0 ? (
+                          <p className="text-xs text-zinc-500">No lines highlighted for this message.</p>
+                        ) : (
+                          (activeBatchResult.highlighted_lines || []).map((line) => (
+                            <div key={`${line.line_number}-${line.line}`} className="p-2 rounded border border-red-500/30 bg-red-500/5">
+                              <p className="text-[11px] text-red-300 mb-1">Line {line.line_number} · {line.indicators.join(', ')}</p>
+                              <p className="text-xs text-zinc-200 font-mono">{line.line}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             )}

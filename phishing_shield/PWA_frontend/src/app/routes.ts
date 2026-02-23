@@ -5,6 +5,7 @@ import ThreatScanConsole from './pages/ThreatScanConsole';
 import { ScanHistory } from './pages/ScanHistory';
 import { ThreatAnalytics } from './pages/ThreatAnalytics';
 import { SystemStatus } from './pages/SystemStatus';
+import { ExplainabilityDetails } from './pages/ExplainabilityDetails';
 
 // Inline auth check to avoid module-level localStorage access
 function checkAuth(): boolean {
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: ThreatScanConsole },
       { path: 'history', Component: ScanHistory },
+      { path: 'history/explainability/:scanId', Component: ExplainabilityDetails },
       { path: 'analytics', Component: ThreatAnalytics },
       { path: 'system', Component: SystemStatus },
       { path: '*', loader: () => redirect('/') },
