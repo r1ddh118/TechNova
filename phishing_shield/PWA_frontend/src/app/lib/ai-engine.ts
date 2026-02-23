@@ -90,6 +90,9 @@ export interface InferenceResult {
   classPercentages: Record<string, number>;
 }
 
+const FALLBACK_SEED = 73219;
+const API_TIMEOUT_MS = 8000;
+
 const PHISHING_PATTERNS = {
   urgency: [
     /urgent/i,
@@ -148,6 +151,45 @@ const PHISHING_PATTERNS = {
   ],
 };
 
+function hashString(input: string): number {
+  let hash = FALLBACK_SEED;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function seededValue(seedSource: string, min: number, max: number): number {
+  const hash = hashString(seedSource);
+  const normalized = (hash % 10000) / 10000;
+  return min + normalized * (max - min);
+}
+
+function buildHighlightedLines(text: string): HighlightedLine[] {
+  return text
+    .split(/\r?\n/)
+    .map((line, lineIndex) => {
+      const indicators: string[] = [];
+      if (PHISHING_PATTERNS.urgency.some((pattern) => pattern.test(line))) indicators.push('Urgency');
+      if (PHISHING_PATTERNS.impersonation.some((pattern) => pattern.test(line))) indicators.push('Impersonation');
+      if (PHISHING_PATTERNS.suspiciousURL.some((pattern) => pattern.test(line))) indicators.push('Suspicious URL');
+      if (PHISHING_PATTERNS.financialTrigger.some((pattern) => pattern.test(line))) indicators.push('Financial Trigger');
+      if (PHISHING_PATTERNS.credentialRequest.some((pattern) => pattern.test(line))) indicators.push('Credential Request');
+      if (PHISHING_PATTERNS.spoofedDomain.some((pattern) => pattern.test(line))) indicators.push('Spoofed Domain');
+
+      if (indicators.length === 0) {
+        return null;
+      }
+
+      return {
+        line_number: lineIndex + 1,
+        line: line.trim() || line,
+        indicators,
+      };
+    })
+    .filter((line): line is HighlightedLine => line !== null);
+}
+
 function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
   const features = [
     {
@@ -184,7 +226,9 @@ function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
 
   return features.map((feature) => {
     const detected = feature.patterns.some((pattern) => pattern.test(text));
-    const severity = detected ? Math.random() * 0.3 + 0.7 : Math.random() * 0.3;
+    const severity = detected
+      ? seededValue(`${text}-${feature.name}-detected`, 0.7, 1)
+      : seededValue(`${text}-${feature.name}-undetected`, 0, 0.3);
     return {
       name: feature.label,
       detected,
@@ -196,13 +240,17 @@ function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
 export async function analyzeMessage(content: string): Promise<InferenceResult> {
   // Try backend API first
   try {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     const response = await fetch('http://localhost:8000/scan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text: content }),
+      signal: controller.signal,
     });
+    window.clearTimeout(timeoutId);
     if (!response.ok) throw new Error('Backend unavailable');
     const data = await response.json();
     // Map backend response to frontend InferenceResult
@@ -250,15 +298,15 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
     if (normalizedScore < 0.3) {
       prediction = 'safe';
       riskLevel = 'low';
-      confidence = 0.85 + Math.random() * 0.1;
+      confidence = seededValue(`${content}-safe-confidence`, 0.85, 0.95);
     } else if (normalizedScore < 0.6) {
       prediction = 'suspicious';
-      riskLevel = detectedFeatures.length > 2 ? 'medium' : 'low';
-      confidence = 0.7 + Math.random() * 0.15;
+      riskLevel = 'medium';
+      confidence = seededValue(`${content}-suspicious-confidence`, 0.7, 0.85);
     } else {
       prediction = 'phishing';
       riskLevel = detectedFeatures.length > 3 ? 'critical' : 'high';
-      confidence = 0.8 + Math.random() * 0.15;
+      confidence = seededValue(`${content}-phishing-confidence`, 0.8, 0.95);
     }
     let explanation = '';
     if (prediction === 'safe') {
@@ -291,7 +339,7 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
         contributionPercent: feature.detected ? Number((feature.severity * 20).toFixed(2)) : 0,
       })),
       explanation,
-      highlightedLines: [],
+      highlightedLines: buildHighlightedLines(content),
       classPercentages: normalizedPercentages,
     };
   }

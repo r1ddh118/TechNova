@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Download,
-  Search,
-  Filter,
-  Mail,
-  MessageSquare,
-  FileText,
-  Trash2,
-  RefreshCw,
-} from 'lucide-react';
+import { Download, Search, Filter, Mail, MessageSquare, FileText, Trash2, RefreshCw, FlaskConical } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
@@ -27,7 +19,6 @@ interface ApiHistoryRecord {
   text_preview: string;
   risk_level: string;
   confidence: number;
-  rule_score: number;
   explanations: Array<{
     feature?: string;
     value?: number;
@@ -39,14 +30,13 @@ interface ApiHistoryRecord {
 }
 
 export function ScanHistory() {
+  const navigate = useNavigate();
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [verdictFilter, setVerdictFilter] = useState<string>('all');
-  const [riskFilter, setRiskFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendReachable, setBackendReachable] = useState<boolean | null>(null);
-  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadScans();
@@ -102,7 +92,6 @@ export function ScanHistory() {
         highlighted_lines: item.highlighted_lines || [],
         class_percentages: item.class_percentages || {},
       },
-      operatorDecision: 'pending',
     }));
   };
 
@@ -127,7 +116,6 @@ export function ScanHistory() {
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
       setScans(merged);
-      setSelectedScanId((current) => current ?? merged[0]?.id ?? null);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -149,18 +137,8 @@ export function ScanHistory() {
       filtered = filtered.filter((scan) => scan.verdict === verdictFilter);
     }
 
-    if (riskFilter !== 'all') {
-      filtered = filtered.filter((scan) => scan.riskLevel === riskFilter);
-    }
-
     return filtered;
-  }, [scans, searchQuery, verdictFilter, riskFilter]);
-
-
-  const selectedScan = useMemo(
-    () => scans.find((scan) => scan.id === selectedScanId) || null,
-    [scans, selectedScanId],
-  );
+  }, [scans, searchQuery, verdictFilter]);
 
   const handleExport = async () => {
     try {
@@ -175,7 +153,7 @@ export function ScanHistory() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast.success('Scan history exported');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export scan history');
     }
   };
@@ -190,7 +168,7 @@ export function ScanHistory() {
       await deleteScan(id);
       await loadScans(true);
       toast.success('Scan deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete scan');
     }
   };
@@ -208,37 +186,6 @@ export function ScanHistory() {
     }
   };
 
-  const getRiskBadge = (risk: string) => {
-    switch (risk) {
-      case 'low':
-        return (
-          <Badge variant="outline" className="border-green-500 text-green-500">
-            Low
-          </Badge>
-        );
-      case 'medium':
-        return (
-          <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-            Medium
-          </Badge>
-        );
-      case 'high':
-        return (
-          <Badge variant="outline" className="border-orange-500 text-orange-500">
-            High
-          </Badge>
-        );
-      case 'critical':
-        return (
-          <Badge variant="outline" className="border-red-500 text-red-500">
-            Critical
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
-  };
-
   const getMessageIcon = (type: string) => {
     switch (type) {
       case 'email':
@@ -249,27 +196,6 @@ export function ScanHistory() {
       default:
         return <FileText className="w-4 h-4" />;
     }
-  };
-
-  const getDecisionBadge = (decision?: string) => {
-    if (!decision || decision === 'pending') {
-      return (
-        <Badge variant="outline" className="border-zinc-700 text-zinc-500">
-          Pending
-        </Badge>
-      );
-    }
-    if (decision === 'incident') {
-      return <Badge variant="destructive">Incident</Badge>;
-    }
-    if (decision === 'false-positive') {
-      return (
-        <Badge variant="outline" className="border-blue-500 text-blue-500">
-          False Positive
-        </Badge>
-      );
-    }
-    return null;
   };
 
   return (
@@ -303,7 +229,7 @@ export function ScanHistory() {
         </div>
 
         <Card className="p-4 bg-zinc-900 border-zinc-800 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -328,47 +254,8 @@ export function ScanHistory() {
                 <SelectItem value="phishing">Phishing</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="bg-zinc-950 border-zinc-700">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Risk" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Risk Levels</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </Card>
-
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card className="p-4 bg-zinc-900 border-zinc-800">
-            <p className="text-xs text-zinc-500 mb-1">Total Scans</p>
-            <p className="text-2xl font-semibold">{scans.length}</p>
-          </Card>
-          <Card className="p-4 bg-zinc-900 border-zinc-800">
-            <p className="text-xs text-zinc-500 mb-1">Phishing Detected</p>
-            <p className="text-2xl font-semibold text-red-500">
-              {scans.filter((s) => s.verdict === 'phishing').length}
-            </p>
-          </Card>
-          <Card className="p-4 bg-zinc-900 border-zinc-800">
-            <p className="text-xs text-zinc-500 mb-1">Suspicious</p>
-            <p className="text-2xl font-semibold text-yellow-500">
-              {scans.filter((s) => s.verdict === 'suspicious').length}
-            </p>
-          </Card>
-          <Card className="p-4 bg-zinc-900 border-zinc-800">
-            <p className="text-xs text-zinc-500 mb-1">Safe</p>
-            <p className="text-2xl font-semibold text-green-500">
-              {scans.filter((s) => s.verdict === 'safe').length}
-            </p>
-          </Card>
-        </div>
 
         <Card className="bg-zinc-900 border-zinc-800">
           <Table>
@@ -378,31 +265,26 @@ export function ScanHistory() {
                 <TableHead className="text-zinc-400">Type</TableHead>
                 <TableHead className="text-zinc-400">Content Preview</TableHead>
                 <TableHead className="text-zinc-400">Verdict</TableHead>
-                <TableHead className="text-zinc-400">Risk</TableHead>
-                <TableHead className="text-zinc-400">Decision</TableHead>
+                <TableHead className="text-zinc-400">Explainability</TableHead>
                 <TableHead className="text-zinc-400"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-zinc-500">
                     Loading scan history...
                   </TableCell>
                 </TableRow>
               ) : filteredScans.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-zinc-500">
                     No scans found
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredScans.map((scan) => (
-                  <TableRow
-                    key={scan.id}
-                    className={`border-zinc-800 hover:bg-zinc-800/50 cursor-pointer ${selectedScanId === scan.id ? 'bg-zinc-800/60' : ''}`}
-                    onClick={() => setSelectedScanId(scan.id)}
-                  >
+                  <TableRow key={scan.id} className="border-zinc-800 hover:bg-zinc-800/50">
                     <TableCell className="text-xs text-zinc-400">
                       {format(new Date(scan.timestamp), 'MMM dd, HH:mm:ss')}
                     </TableCell>
@@ -413,11 +295,20 @@ export function ScanHistory() {
                       </div>
                     </TableCell>
                     <TableCell className="max-w-xs truncate text-sm text-zinc-300">
-                      {scan.content.substring(0, 60)}...
+                      {scan.content.substring(0, 80)}...
                     </TableCell>
                     <TableCell>{getVerdictBadge(scan.verdict)}</TableCell>
-                    <TableCell>{getRiskBadge(scan.riskLevel)}</TableCell>
-                    <TableCell>{getDecisionBadge(scan.operatorDecision)}</TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-zinc-700"
+                        onClick={() => navigate(`/history/explainability/${encodeURIComponent(scan.id)}`, { state: { scan } })}
+                      >
+                        <FlaskConical className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -434,51 +325,6 @@ export function ScanHistory() {
             </TableBody>
           </Table>
         </Card>
-
-        {selectedScan && (
-          <Card className="bg-zinc-900 border-zinc-800 mt-6 p-4">
-            <h2 className="text-sm font-semibold mb-3">Explainability Details</h2>
-            <p className="text-xs text-zinc-500 mb-4">{selectedScan.content}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              {Object.entries(selectedScan.explainability?.class_percentages || {}).map(([label, percent]) => (
-                <div key={label} className="p-3 rounded border border-zinc-800 bg-zinc-950">
-                  <p className="text-xs text-zinc-500 capitalize">{label}</p>
-                  <p className="text-lg font-semibold">{Number(percent).toFixed(1)}%</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider">Detected Indicators</p>
-              {(selectedScan.explainability?.explanations || []).length === 0 ? (
-                <p className="text-sm text-zinc-500">No explainability data stored for this scan.</p>
-              ) : (
-                (selectedScan.explainability?.explanations || []).map((item, idx) => (
-                  <div key={`${item.feature}-${idx}`} className="p-3 rounded border border-zinc-800 bg-zinc-950">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-zinc-200">{item.feature || 'indicator'}</p>
-                      <p className="text-xs text-zinc-400">{Number(item.contribution_percent || 0).toFixed(1)}%</p>
-                    </div>
-                    <p className="text-xs text-zinc-400 mt-1">{item.reason || 'No reason provided'}</p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {(selectedScan.explainability?.highlighted_lines || []).length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider">Highlighted Suspicious Lines</p>
-                {(selectedScan.explainability?.highlighted_lines || []).map((line) => (
-                  <div key={`${line.line_number}-${line.line}`} className="p-2 rounded border border-red-500/30 bg-red-500/5">
-                    <p className="text-[11px] text-red-300 mb-1">Line {line.line_number} · {line.indicators.join(', ')}</p>
-                    <p className="text-xs text-zinc-200 font-mono">{line.line}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
       </div>
     </div>
   );
