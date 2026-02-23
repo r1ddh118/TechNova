@@ -9,13 +9,21 @@ export interface BatchScanResult {
   total_scanned: number;
 }
 
+export interface UpdateCheckResult {
+  status: string;
+  model_loaded: boolean;
+  vectorizer_loaded: boolean;
+  model_version: string;
+  last_updated?: string | null;
+}
+
 export async function analyzeBatch(messages: string[]): Promise<BatchScanResult> {
-  const response = await fetch("http://localhost:8000/batch-scan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const response = await fetch('http://localhost:8000/batch-scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ texts: messages }),
   });
-  if (!response.ok) throw new Error("Batch scan failed");
+  if (!response.ok) throw new Error('Batch scan failed');
   return await response.json();
 }
 // AI Inference Engine for Phishing Detection
@@ -125,8 +133,8 @@ function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
     },
   ];
 
-  return features.map(feature => {
-    const detected = feature.patterns.some(pattern => pattern.test(text));
+  return features.map((feature) => {
+    const detected = feature.patterns.some((pattern) => pattern.test(text));
     const severity = detected ? Math.random() * 0.3 + 0.7 : Math.random() * 0.3;
     return {
       name: feature.label,
@@ -139,35 +147,37 @@ function analyzeContent(text: string): InferenceResult['triggeredFeatures'] {
 export async function analyzeMessage(content: string): Promise<InferenceResult> {
   // Try backend API first
   try {
-    const response = await fetch("http://localhost:8000/scan", {
-      method: "POST",
+    const response = await fetch('http://localhost:8000/scan', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json"
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: content })
+      body: JSON.stringify({ text: content }),
     });
-    if (!response.ok) throw new Error("Backend unavailable");
+    if (!response.ok) throw new Error('Backend unavailable');
     const data = await response.json();
     // Map backend response to frontend InferenceResult
     return {
-      prediction: data.is_phishing ? "phishing" : (data.risk_level === "Medium" ? "suspicious" : "safe"),
+      prediction: data.is_phishing ? 'phishing' : data.risk_level === 'Medium' ? 'suspicious' : 'safe',
       confidence: data.confidence,
-      riskLevel: data.risk_level.toLowerCase() as InferenceResult["riskLevel"],
+      riskLevel: data.risk_level.toLowerCase() as InferenceResult['riskLevel'],
       triggeredFeatures: (data.explanations || []).map((ex: any) => ({
-        name: ex.feature || "feature",
+        name: ex.feature || 'feature',
         detected: true,
-        severity: 0.8
+        severity: 0.8,
       })),
-      explanation: Array.isArray(data.explanations) ? data.explanations.map((ex: any) => ex.reason).join("; ") : "Analysis complete"
+      explanation: Array.isArray(data.explanations)
+        ? data.explanations.map((ex: any) => ex.reason).join('; ')
+        : 'Analysis complete',
     };
   } catch (err) {
     // Fallback to mock if offline or error
     // Simulate processing delay for realistic UX
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 800));
     const features = analyzeContent(content);
-    const detectedFeatures = features.filter(f => f.detected);
+    const detectedFeatures = features.filter((f) => f.detected);
     let riskScore = 0;
-    features.forEach(f => {
+    features.forEach((f) => {
       if (f.detected) {
         riskScore += f.severity;
       }
@@ -193,9 +203,9 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
     if (prediction === 'safe') {
       explanation = 'No significant phishing indicators detected. Message appears legitimate.';
     } else if (prediction === 'suspicious') {
-      explanation = `Detected ${detectedFeatures.length} suspicious indicator(s): ${detectedFeatures.map(f => f.name).join(', ')}. Exercise caution.`;
+      explanation = `Detected ${detectedFeatures.length} suspicious indicator(s): ${detectedFeatures.map((f) => f.name).join(', ')}. Exercise caution.`;
     } else {
-      explanation = `High-confidence phishing attempt. Multiple red flags detected: ${detectedFeatures.map(f => f.name).join(', ')}. Do not interact.`;
+      explanation = `High-confidence phishing attempt. Multiple red flags detected: ${detectedFeatures.map((f) => f.name).join(', ')}. Do not interact.`;
     }
     return {
       prediction,
@@ -205,6 +215,14 @@ export async function analyzeMessage(content: string): Promise<InferenceResult> 
       explanation,
     };
   }
+}
+
+export async function checkForUpdates(): Promise<UpdateCheckResult> {
+  const response = await fetch('http://localhost:8000/updates/check');
+  if (!response.ok) {
+    throw new Error('Failed to check updates');
+  }
+  return response.json();
 }
 
 // Model metadata
