@@ -131,6 +131,18 @@ const handleSaveToLog = async () => {
       triggeredFeatures: result.triggeredFeatures
         .filter(f => f.detected)
         .map(f => f.name),
+      explainability: {
+        explanations: result.triggeredFeatures
+          .filter((feature) => feature.detected)
+          .map((feature) => ({
+            feature: feature.name,
+            value: Number((feature.severity * 10).toFixed(2)),
+            reason: feature.reason || result.explanation,
+            contribution_percent: feature.contributionPercent || 0,
+          })),
+        highlighted_lines: result.highlightedLines,
+        class_percentages: result.classPercentages,
+      },
       operatorDecision: 'pending',
     });
     toast.success('Scan saved to history');
@@ -155,6 +167,18 @@ const handleMarkIncident = async () => {
       triggeredFeatures: result.triggeredFeatures
         .filter(f => f.detected)
         .map(f => f.name),
+      explainability: {
+        explanations: result.triggeredFeatures
+          .filter((feature) => feature.detected)
+          .map((feature) => ({
+            feature: feature.name,
+            value: Number((feature.severity * 10).toFixed(2)),
+            reason: feature.reason || result.explanation,
+            contribution_percent: feature.contributionPercent || 0,
+          })),
+        highlighted_lines: result.highlightedLines,
+        class_percentages: result.classPercentages,
+      },
       operatorDecision: 'incident',
     });
     toast.success('Marked as security incident');
@@ -425,24 +449,25 @@ const getRiskConfig = (risk: string) => {
                     </div>
                   </div>
 
-                  {/* Confidence Score */}
+                  {/* Risk Level */}
+                  {/* Threat Probabilities */}
                   <div>
                     <label className="text-xs text-zinc-500 uppercase tracking-wider mb-2 block">
-                      Confidence Score
+                      Model Explainability
                     </label>
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-zinc-400">Detection Confidence</span>
-                        <span className="font-semibold">{(result.confidence * 100).toFixed(1)}%</span>
-                      </div>
-                      <Progress 
-                        value={result.confidence * 100} 
-                        className="h-2 bg-zinc-800"
-                      />
+                      {Object.entries(result.classPercentages).map(([label, percent]) => (
+                        <div key={label} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-zinc-400 capitalize">{label}</span>
+                            <span className="text-zinc-300">{Number(percent).toFixed(1)}%</span>
+                          </div>
+                          <Progress value={Number(percent)} className="h-1.5 bg-zinc-800" />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Risk Level */}
                   <div>
                     <label className="text-xs text-zinc-500 uppercase tracking-wider mb-2 block">
                       Risk Level
@@ -469,9 +494,16 @@ const getRiskConfig = (risk: string) => {
                               : 'bg-zinc-800/50 border-zinc-800'
                           }`}
                         >
-                          <span className={`text-sm ${feature.detected ? 'text-red-400' : 'text-zinc-600'}`}>
-                            {feature.name}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={`text-sm ${feature.detected ? 'text-red-400' : 'text-zinc-600'}`}>
+                              {feature.name}
+                            </span>
+                            {feature.detected && feature.reason && (
+                              <span className="text-[11px] text-zinc-400 mt-1">
+                                {feature.reason} ({(feature.contributionPercent || 0).toFixed(1)}%)
+                              </span>
+                            )}
+                          </div>
                           {feature.detected && (
                             <Badge variant="destructive" className="text-xs">
                               DETECTED
@@ -481,6 +513,23 @@ const getRiskConfig = (risk: string) => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Highlighted Content */}
+                  {result.highlightedLines.length > 0 && (
+                    <div>
+                      <label className="text-xs text-zinc-500 uppercase tracking-wider mb-3 block">
+                        Highlighted Suspicious Lines
+                      </label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {result.highlightedLines.map((line) => (
+                          <div key={`${line.line_number}-${line.line}`} className="p-2 rounded border border-red-500/30 bg-red-500/5">
+                            <div className="text-[11px] text-red-300 mb-1">Line {line.line_number} · {line.indicators.join(', ')}</div>
+                            <div className="text-xs text-zinc-200 font-mono">{line.line}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-4 border-t border-zinc-800">

@@ -28,7 +28,14 @@ interface ApiHistoryRecord {
   risk_level: string;
   confidence: number;
   rule_score: number;
-  explanations: Array<{ feature?: string; reason?: string }>;
+  explanations: Array<{
+    feature?: string;
+    value?: number;
+    reason?: string;
+    contribution_percent?: number;
+  }>;
+  highlighted_lines?: Array<{ line_number: number; line: string; indicators: string[] }>;
+  class_percentages?: Record<string, number>;
 }
 
 export function ScanHistory() {
@@ -39,6 +46,7 @@ export function ScanHistory() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendReachable, setBackendReachable] = useState<boolean | null>(null);
+  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadScans();
@@ -89,6 +97,11 @@ export function ScanHistory() {
       triggeredFeatures: item.explanations
         .map((explanation) => explanation.feature || explanation.reason)
         .filter((value): value is string => Boolean(value)),
+      explainability: {
+        explanations: item.explanations,
+        highlighted_lines: item.highlighted_lines || [],
+        class_percentages: item.class_percentages || {},
+      },
       operatorDecision: 'pending',
     }));
   };
@@ -114,6 +127,7 @@ export function ScanHistory() {
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
       setScans(merged);
+      setSelectedScanId((current) => current ?? merged[0]?.id ?? null);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -141,6 +155,12 @@ export function ScanHistory() {
 
     return filtered;
   }, [scans, searchQuery, verdictFilter, riskFilter]);
+
+
+  const selectedScan = useMemo(
+    () => scans.find((scan) => scan.id === selectedScanId) || null,
+    [scans, selectedScanId],
+  );
 
   const handleExport = async () => {
     try {
@@ -359,7 +379,6 @@ export function ScanHistory() {
                 <TableHead className="text-zinc-400">Content Preview</TableHead>
                 <TableHead className="text-zinc-400">Verdict</TableHead>
                 <TableHead className="text-zinc-400">Risk</TableHead>
-                <TableHead className="text-zinc-400">Confidence</TableHead>
                 <TableHead className="text-zinc-400">Decision</TableHead>
                 <TableHead className="text-zinc-400"></TableHead>
               </TableRow>
@@ -367,19 +386,23 @@ export function ScanHistory() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-zinc-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
                     Loading scan history...
                   </TableCell>
                 </TableRow>
               ) : filteredScans.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-zinc-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
                     No scans found
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredScans.map((scan) => (
-                  <TableRow key={scan.id} className="border-zinc-800 hover:bg-zinc-800/50">
+                  <TableRow
+                    key={scan.id}
+                    className={`border-zinc-800 hover:bg-zinc-800/50 cursor-pointer ${selectedScanId === scan.id ? 'bg-zinc-800/60' : ''}`}
+                    onClick={() => setSelectedScanId(scan.id)}
+                  >
                     <TableCell className="text-xs text-zinc-400">
                       {format(new Date(scan.timestamp), 'MMM dd, HH:mm:ss')}
                     </TableCell>
@@ -394,7 +417,6 @@ export function ScanHistory() {
                     </TableCell>
                     <TableCell>{getVerdictBadge(scan.verdict)}</TableCell>
                     <TableCell>{getRiskBadge(scan.riskLevel)}</TableCell>
-                    <TableCell className="text-sm">{(scan.confidence * 100).toFixed(0)}%</TableCell>
                     <TableCell>{getDecisionBadge(scan.operatorDecision)}</TableCell>
                     <TableCell>
                       <Button
@@ -412,6 +434,51 @@ export function ScanHistory() {
             </TableBody>
           </Table>
         </Card>
+
+        {selectedScan && (
+          <Card className="bg-zinc-900 border-zinc-800 mt-6 p-4">
+            <h2 className="text-sm font-semibold mb-3">Explainability Details</h2>
+            <p className="text-xs text-zinc-500 mb-4">{selectedScan.content}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              {Object.entries(selectedScan.explainability?.class_percentages || {}).map(([label, percent]) => (
+                <div key={label} className="p-3 rounded border border-zinc-800 bg-zinc-950">
+                  <p className="text-xs text-zinc-500 capitalize">{label}</p>
+                  <p className="text-lg font-semibold">{Number(percent).toFixed(1)}%</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider">Detected Indicators</p>
+              {(selectedScan.explainability?.explanations || []).length === 0 ? (
+                <p className="text-sm text-zinc-500">No explainability data stored for this scan.</p>
+              ) : (
+                (selectedScan.explainability?.explanations || []).map((item, idx) => (
+                  <div key={`${item.feature}-${idx}`} className="p-3 rounded border border-zinc-800 bg-zinc-950">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-zinc-200">{item.feature || 'indicator'}</p>
+                      <p className="text-xs text-zinc-400">{Number(item.contribution_percent || 0).toFixed(1)}%</p>
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-1">{item.reason || 'No reason provided'}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {(selectedScan.explainability?.highlighted_lines || []).length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-500 uppercase tracking-wider">Highlighted Suspicious Lines</p>
+                {(selectedScan.explainability?.highlighted_lines || []).map((line) => (
+                  <div key={`${line.line_number}-${line.line}`} className="p-2 rounded border border-red-500/30 bg-red-500/5">
+                    <p className="text-[11px] text-red-300 mb-1">Line {line.line_number} · {line.indicators.join(', ')}</p>
+                    <p className="text-xs text-zinc-200 font-mono">{line.line}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );
