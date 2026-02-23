@@ -3,6 +3,7 @@ from time import perf_counter
 import sys
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, PassiveAggressiveClassifier, Perceptron, SGDClassifier
@@ -16,17 +17,17 @@ from sklearn.tree import DecisionTreeClassifier
 def _metrics(y_true, y_pred, y_prob):
     return {
         "accuracy": round(accuracy_score(y_true, y_pred), 4),
-        "precision": round(precision_score(y_true, y_pred), 4),
-        "recall": round(recall_score(y_true, y_pred), 4),
-        "f1": round(f1_score(y_true, y_pred), 4),
+        "precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
+        "recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
+        "f1": round(f1_score(y_true, y_pred, zero_division=0), 4),
         "roc_auc": round(roc_auc_score(y_true, y_prob), 4),
     }
 
 
 def _risk_thresholds(proba: float) -> str:
-    if proba >= 0.75:
+    if proba >= HIGH_RISK_MIN:
         return "High"
-    if proba >= 0.40:
+    if proba >= LOW_RISK_MAX:
         return "Medium"
     return "Low"
 
@@ -220,6 +221,7 @@ def train():
     joblib.dump(
         {
             "best_model": best_name,
+            "models_evaluated": len(all_metrics),
             "metrics": all_metrics,
             "inference_ms_for_50_samples": round(inference_ms, 3),
             "risk_thresholds": sample_thresholds,
