@@ -59,11 +59,6 @@ export function SystemStatus() {
   };
 
   const handleCheckUpdates = async () => {
-    if (!isOnline) {
-      toast.error('Cannot check for updates while offline');
-      return;
-    }
-
     setChecking(true);
     try {
       const status = await checkForUpdates();
@@ -72,9 +67,11 @@ export function SystemStatus() {
         setLastUpdatedAt(status.last_updated);
       }
       setLastCheckedAt(new Date());
-      toast.success('System is up to date');
-    } catch (error) {
-      toast.error('Unable to check updates. Ensure backend is running.');
+      if (status.status === 'offline-fallback') {
+        toast.info('Using offline update metadata (backend unavailable)');
+      } else {
+        toast.success('System is up to date');
+      }
     } finally {
       setChecking(false);
     }
@@ -254,7 +251,9 @@ export function SystemStatus() {
                 System Updates
               </h3>
               <p className="text-sm text-zinc-500">
-                {isOnline ? 'Check for and apply security updates' : 'Updates require network connection'}
+                {isOnline
+                  ? 'Check for and apply security updates'
+                  : 'Offline fallback metadata will be used when backend is unreachable'}
               </p>
               {lastCheckedAt && (
                 <p className="text-xs text-zinc-500 mt-1">
@@ -282,7 +281,7 @@ export function SystemStatus() {
             <Button
               onClick={handleApplyUpdate}
               variant="outline"
-              disabled={!isOnline || checking}
+              disabled={checking}
               className="border-zinc-700"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -296,8 +295,8 @@ export function SystemStatus() {
               <div>
                 <p className="text-sm text-yellow-500 font-medium">Offline Mode Active</p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  System will automatically check for updates when connection is restored. All core
-                  functions remain operational offline.
+                  Local model metadata remains available even without backend connectivity. All core
+                  functions continue operating offline.
                 </p>
               </div>
             </div>

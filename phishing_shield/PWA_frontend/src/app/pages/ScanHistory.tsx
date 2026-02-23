@@ -38,6 +38,7 @@ export function ScanHistory() {
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [backendReachable, setBackendReachable] = useState<boolean | null>(null);
 
   useEffect(() => {
     void loadScans();
@@ -65,7 +66,13 @@ export function ScanHistory() {
   };
 
   const loadApiHistory = async (): Promise<ScanRecord[]> => {
-    const response = await fetch('http://localhost:8000/history?limit=200');
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 2500);
+    const response = await fetch('http://localhost:8000/history?limit=200', {
+      signal: controller.signal,
+    });
+    window.clearTimeout(timeoutId);
+
     if (!response.ok) {
       throw new Error('History API unavailable');
     }
@@ -97,6 +104,7 @@ export function ScanHistory() {
       const [local, remote] = await Promise.allSettled([getAllScans(), loadApiHistory()]);
       const localScans = local.status === 'fulfilled' ? local.value : [];
       const remoteScans = remote.status === 'fulfilled' ? remote.value : [];
+      setBackendReachable(remote.status === 'fulfilled');
 
       if (local.status === 'rejected' && remote.status === 'rejected' && !silent) {
         toast.error('Failed to load scan history');
@@ -251,7 +259,10 @@ export function ScanHistory() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold mb-2">Offline + Backend Scan History</h1>
-              <p className="text-sm text-zinc-500">Live audit log with 10s auto-refresh</p>
+              <p className="text-sm text-zinc-500">
+                Live audit log with 10s auto-refresh
+                {backendReachable === false ? ' (backend offline: showing local records only)' : ''}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button
