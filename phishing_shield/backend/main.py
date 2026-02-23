@@ -171,6 +171,27 @@ def _apply_hybrid_risk(ml_confidence: float, features: Dict[str, Any]) -> Dict[s
     }
 
 
+
+
+def _classification_label(confidence: float, risk_level: str) -> str:
+    if confidence >= 0.8 or risk_level == "High":
+        return "phishing"
+    if confidence >= 0.45 or risk_level == "Medium":
+        return "suspicious"
+    return "safe"
+
+
+def _class_percentages(confidence: float) -> Dict[str, float]:
+    phishing = max(0.0, min(100.0, confidence * 100.0))
+    remainder = max(0.0, 100.0 - phishing)
+    suspicious = round(remainder * 0.65, 2)
+    safe = round(max(0.0, remainder - suspicious), 2)
+    return {
+        "phishing": round(phishing, 2),
+        "suspicious": suspicious,
+        "safe": safe,
+    }
+
 def _predict(text: str) -> Dict[str, Any]:
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -179,8 +200,13 @@ def _predict(text: str) -> Dict[str, Any]:
 
     if vectorizer is not None:
         X = vectorizer.transform([text])
-        prediction = int(model.predict(X)[0])
-        probability = float(model.predict_proba(X)[0][1])
+        try:
+            prediction = int(model.predict(X)[0])
+            probability = float(model.predict_proba(X)[0][1])
+        except Exception:
+            classic_vector = align_features(to_vector(features_dict), EXPECTED_FEATURES)
+            prediction = int(model.predict([classic_vector])[0])
+            probability = float(model.predict_proba([classic_vector])[0][1])
     else:
         classic_vector = align_features(to_vector(features_dict), EXPECTED_FEATURES)
         prediction = int(model.predict([classic_vector])[0])
@@ -188,13 +214,19 @@ def _predict(text: str) -> Dict[str, Any]:
 
     hybrid = _apply_hybrid_risk(probability, features_dict)
 
+    confidence = round(probability, 4)
+    class_percentages = _class_percentages(confidence)
+
     return {
         "is_phishing": bool(prediction),
-        "confidence": round(probability, 4),
+        "classification": _classification_label(confidence, hybrid["risk_level"]),
+        "confidence": confidence,
         "risk_level": hybrid["risk_level"],
         "hybrid_score": hybrid["hybrid_score"],
         "rule_score": hybrid["rule_score"],
+        "class_percentages": class_percentages,
         "explanations": features_dict.get("explanations", []),
+        "highlighted_lines": features_dict.get("highlighted_lines", []),
     }
 
 

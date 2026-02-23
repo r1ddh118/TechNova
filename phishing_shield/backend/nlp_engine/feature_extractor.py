@@ -1,9 +1,17 @@
-from .preprocess import clean_text, extract_urls, extract_email_addresses, combine_subject_body
-from .url_analyzer import url_features, analyze_urls
-from .urgency_detector import urgency_score
-from .impersonation_detector import impersonation_score
-from .credential_detector import credential_request_score
-from typing import Union, Dict, Any
+import re
+from typing import Any, Dict, List, Union
+
+from .credential_detector import CREDENTIAL_KEYWORDS, credential_request_score
+from .impersonation_detector import ORG_KEYWORDS, impersonation_score
+from .preprocess import clean_text, combine_subject_body, extract_email_addresses, extract_urls
+from .urgency_detector import URGENT_WORDS, urgency_score
+from .url_analyzer import analyze_urls, url_features
+
+RISK_KEYWORDS = {
+    "urgency": URGENT_WORDS,
+    "impersonation": ORG_KEYWORDS,
+    "credential": CREDENTIAL_KEYWORDS,
+}
 
 
 EXPLAINABILITY_MAP = {
@@ -30,6 +38,40 @@ def _build_explanations(features: Dict[str, Any]):
                 'reason': message,
             })
     return reasons
+
+
+def _find_problem_lines(text: str) -> List[Dict[str, Any]]:
+    if not isinstance(text, str) or not text.strip():
+        return []
+
+    flagged: List[Dict[str, Any]] = []
+    lines = text.splitlines() if "\n" in text else [text]
+
+    for idx, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        lowered = line.lower()
+        indicators: List[str] = []
+
+        if re.search(r"https?://\S+", line):
+            indicators.append("url")
+
+        for category, keywords in RISK_KEYWORDS.items():
+            if any(keyword in lowered for keyword in keywords):
+                indicators.append(category)
+
+        if indicators:
+            flagged.append(
+                {
+                    "line_number": idx,
+                    "line": line,
+                    "indicators": sorted(set(indicators)),
+                }
+            )
+
+    return flagged
 
 
 def extract_features(record: Union[str, Dict[str, Any]]):
@@ -93,6 +135,7 @@ def extract_features(record: Union[str, Dict[str, Any]]):
         'email_addresses': email_addresses,
     }
     features['explanations'] = _build_explanations(features)
+    features['highlighted_lines'] = _find_problem_lines(text)
     return features
 
 
