@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 try:
     from backend.nlp_engine.feature_extractor import extract_features, to_vector
 except ImportError as e:
-    print(f"❌ Import Error: {e}")
+    print(f" Import Error: {e}")
 
 app = FastAPI(title="TechNova Phishing Shield API")
 
@@ -39,11 +39,11 @@ try:
         # Check if model has a feature count attribute
         if hasattr(model, 'n_features_in_'):
             EXPECTED_FEATURES = model.n_features_in_
-        print(f"✅ Model loaded! Expecting {EXPECTED_FEATURES} features.")
+        print(f" Model loaded! Expecting {EXPECTED_FEATURES} features.")
     else:
-        print(f"⚠️ Model not found at {MODEL_PATH}")
+        print(f"Model not found at {MODEL_PATH}")
 except Exception as e:
-    print(f"❌ Error loading model: {e}")
+    print(f" Error loading model: {e}")
 
 # 5. Helper Function to Align Features
 def align_features(vector, expected_count):
@@ -85,7 +85,7 @@ async def scan_single(request: ScanRequest):
         features_dict = extract_features(request.text)
         vector = to_vector(features_dict)
         
-        # ✅ FEATURE ALIGNMENT STEP
+        # FEATURE ALIGNMENT STEP
         final_vector = align_features(vector, EXPECTED_FEATURES)
         
         prediction = model.predict([final_vector])[0]
