@@ -1,4 +1,17 @@
-from typing import Any, Dict, Union
+import re
+from typing import Any, Dict, List, Union
+
+from .credential_detector import CREDENTIAL_KEYWORDS, credential_request_score
+from .impersonation_detector import ORG_KEYWORDS, impersonation_score
+from .preprocess import clean_text, combine_subject_body, extract_email_addresses, extract_urls
+from .urgency_detector import URGENT_WORDS, urgency_score
+from .url_analyzer import analyze_urls, url_features
+
+RISK_KEYWORDS = {
+    "urgency": URGENT_WORDS,
+    "impersonation": ORG_KEYWORDS,
+    "credential": CREDENTIAL_KEYWORDS,
+}
 
 from .credential_detector import CREDENTIAL_KEYWORDS
 from .impersonation_detector import ORG_KEYWORDS
@@ -34,48 +47,38 @@ def _build_explanations(features: Dict[str, Any]):
     return reasons
 
 
-def _build_line_highlights(text: str) -> list[Dict[str, Any]]:
-    if not text:
+def _find_problem_lines(text: str) -> List[Dict[str, Any]]:
+    if not isinstance(text, str) or not text.strip():
         return []
 
-    lines = [line.strip() for line in str(text).splitlines() if line.strip()]
-    if not lines:
-        lines = [str(text).strip()]
+    flagged: List[Dict[str, Any]] = []
+    lines = text.splitlines() if "\n" in text else [text]
 
-    highlights = []
-    for idx, line in enumerate(lines, start=1):
+    for idx, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+
         lowered = line.lower()
-        triggers = []
+        indicators: List[str] = []
 
-        if "http://" in lowered or "https://" in lowered:
-            triggers.append("url")
+        if re.search(r"https?://\S+", line):
+            indicators.append("url")
 
-        urgency_hits = [token for token in URGENT_WORDS if token in lowered]
-        impersonation_hits = [token for token in ORG_KEYWORDS if token in lowered]
-        credential_hits = [token for token in CREDENTIAL_KEYWORDS if token in lowered]
+        for category, keywords in RISK_KEYWORDS.items():
+            if any(keyword in lowered for keyword in keywords):
+                indicators.append(category)
 
-        if urgency_hits:
-            triggers.append("urgency")
-        if impersonation_hits:
-            triggers.append("impersonation")
-        if credential_hits:
-            triggers.append("credential_request")
-
-        if triggers:
-            highlights.append(
+        if indicators:
+            flagged.append(
                 {
                     "line_number": idx,
-                    "line_text": line,
-                    "triggers": sorted(set(triggers)),
-                    "matched_terms": {
-                        "urgency": sorted(set(urgency_hits)),
-                        "impersonation": sorted(set(impersonation_hits)),
-                        "credential": sorted(set(credential_hits)),
-                    },
+                    "line": line,
+                    "indicators": sorted(set(indicators)),
                 }
             )
 
-    return highlights
+    return flagged
 
 
 def extract_features(record: Union[str, Dict[str, Any]]):
@@ -143,8 +146,8 @@ def extract_features(record: Union[str, Dict[str, Any]]):
         "length": length,
         "email_addresses": email_addresses,
     }
-    features["explanations"] = _build_explanations(features)
-    features["line_highlights"] = _build_line_highlights(raw_text if raw_text else text)
+    features['explanations'] = _build_explanations(features)
+    features['highlighted_lines'] = _find_problem_lines(text)
     return features
 
 
