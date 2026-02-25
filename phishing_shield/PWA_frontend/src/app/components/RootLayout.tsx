@@ -7,7 +7,8 @@ import {
   Radio,
   Lock,
   LogOut,
-  User
+  User,
+  Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCurrentUser, logout } from '../lib/auth';
@@ -41,7 +42,8 @@ export function RootLayout() {
   };
 
   const navItems = [
-    { path: '/', label: 'Threat Scan', icon: Shield },
+    { path: '/accounts', label: 'Accounts', icon: Users },
+    { path: '/scan', label: 'Threat Scan', icon: Shield },
     { path: '/history', label: 'Scan History', icon: History },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/system', label: 'System', icon: Settings },
