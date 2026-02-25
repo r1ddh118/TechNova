@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { Lock, User, KeyRound, Shield, AlertCircle, Mail } from 'lucide-react';
+import { Lock, User, KeyRound, Shield, Mail } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { authenticate, authenticateWithGoogle, signupWithPassword } from '../lib/auth';
@@ -15,7 +15,6 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showCredentials, setShowCredentials] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -34,7 +33,7 @@ export function Login() {
 
         if (user) {
           toast.success(`Welcome, ${user.username}`);
-          navigate('/');
+          navigate('/accounts');
         } else {
           toast.error('Invalid credentials');
         }
@@ -56,7 +55,7 @@ export function Login() {
     try {
       const user = await signupWithPassword({ username, email, password });
       toast.success(`Account created for ${user.email}`);
-      navigate('/');
+      navigate('/accounts');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Signup failed';
       toast.error(message);
@@ -73,59 +72,68 @@ export function Login() {
     try {
       const user = await authenticateWithGoogle(googleEmail);
       toast.success(`Signed in with Google as ${user.email}`);
-      navigate('/');
-    } catch {
-      toast.error('Google authentication failed');
+      navigate('/accounts');
+    } catch (error) {
+      if (error instanceof Error && error.message === 'ACCOUNT_NOT_FOUND') {
+        toast.info('No existing account found. Please complete setup.');
+        navigate(`/auth/google-setup?email=${encodeURIComponent(googleEmail.trim().toLowerCase())}`);
+      } else {
+        toast.error('Google authentication failed');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#02040a] p-4 text-zinc-100">
+      <div className="w-full max-w-xl">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-lg mb-4">
-            <Lock className="w-8 h-8 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg border border-zinc-700 mb-4">
+            <Lock className="w-8 h-8 text-zinc-100" />
           </div>
-          <h1 className="text-2xl font-semibold mb-2">PhishGuard AI</h1>
-          <p className="text-sm text-muted-foreground">Security Operations Console</p>
-          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted text-xs">
+          <h1 className="text-5xl font-semibold mb-2 tracking-tight">PhishGuard AI</h1>
+          <p className="text-zinc-400 text-lg">Security Operations Console</p>
+          <div className="mt-3 inline-flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
             <Shield className="w-3 h-3" />
-            <span>OFFLINE MODE • SECURE</span>
+            <span>Offline Mode • Secure</span>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-8 shadow-lg">
-          <div className="grid grid-cols-2 mb-6 rounded-md border border-border overflow-hidden">
+        <div className="bg-transparent border border-zinc-700 rounded-xl p-0 shadow-2xl overflow-hidden">
+          <div className="grid grid-cols-2 border-b border-zinc-700">
             <button
               type="button"
               onClick={() => setAuthMode('login')}
-              className={`py-2 text-sm ${authMode === 'login' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'}`}
+              className={`py-4 text-lg font-medium transition-colors ${
+                authMode === 'login' ? 'text-zinc-50 border-b-2 border-zinc-300' : 'text-zinc-500'
+              }`}
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => setAuthMode('signup')}
-              className={`py-2 text-sm ${authMode === 'signup' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'}`}
+              className={`py-4 text-lg font-medium transition-colors ${
+                authMode === 'signup' ? 'text-zinc-50 border-b-2 border-zinc-300' : 'text-zinc-500'
+              }`}
             >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5 p-8">
             {authMode === 'login' ? (
               <div>
-                <label className="block text-sm font-medium mb-2">Operator ID / Email</label>
+                <label className="block text-lg mb-2 text-zinc-200">Operator ID / Email</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <Input
                     type="text"
                     value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                     placeholder="Enter operator ID or email"
-                    className="pl-10"
+                    className="pl-10 bg-transparent border-zinc-600 h-12 text-zinc-100 placeholder:text-zinc-500"
                     disabled={isLoading}
                     autoComplete="username"
                   />
@@ -134,29 +142,29 @@ export function Login() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Username</label>
+                  <label className="block text-lg mb-2 text-zinc-200">Username</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <Input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Create username"
-                      className="pl-10"
+                      placeholder="Choose username"
+                      className="pl-10 bg-transparent border-zinc-600 h-12 text-zinc-100 placeholder:text-zinc-500"
                       disabled={isLoading}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <label className="block text-lg mb-2 text-zinc-200">Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <Input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
-                      className="pl-10"
+                      className="pl-10 bg-transparent border-zinc-600 h-12 text-zinc-100 placeholder:text-zinc-500"
                       disabled={isLoading}
                       autoComplete="email"
                     />
@@ -166,60 +174,44 @@ export function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-2">{authMode === 'login' ? 'Access Code' : 'Password'}</label>
+              <label className="block text-lg mb-2 text-zinc-200">{authMode === 'login' ? 'Access Code' : 'Password'}</label>
               <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={authMode === 'login' ? 'Enter access code' : 'Create password'}
-                  className="pl-10"
+                  className="pl-10 bg-transparent border-zinc-600 h-12 text-zinc-100 placeholder:text-zinc-500"
                   disabled={isLoading}
                   autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 bg-zinc-100 text-zinc-900 hover:bg-zinc-200" disabled={isLoading}>
               {isLoading ? 'Processing...' : authMode === 'login' ? 'Access Console' : 'Create Account'}
             </Button>
 
-            <Button type="button" variant="outline" className="w-full" disabled={isLoading} onClick={handleGoogleAuth}>
+            <div className="flex items-center gap-3 text-zinc-500 text-xs uppercase tracking-wider">
+              <div className="h-px flex-1 bg-zinc-700" />
+              <span>Or</span>
+              <div className="h-px flex-1 bg-zinc-700" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 border-zinc-600 text-zinc-100 hover:bg-zinc-900"
+              disabled={isLoading}
+              onClick={handleGoogleAuth}
+            >
               Continue with Google
             </Button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-border">
-            <button
-              type="button"
-              onClick={() => setShowCredentials(!showCredentials)}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <AlertCircle className="w-3 h-3" />
-              <span>Demo Credentials</span>
-            </button>
-
-            {showCredentials && (
-              <div className="mt-3 p-3 bg-muted rounded text-xs space-y-2 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Operator:</span>
-                  <span>operator1 / SecureOps2026!</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Analyst:</span>
-                  <span>analyst1 / SecureOps2026!</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Admin:</span>
-                  <span>admin1 / SecureOps2026!</span>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-muted-foreground">
+        <div className="mt-6 text-center text-sm text-zinc-500">
           <p>Critical Infrastructure Security System</p>
           <p className="mt-1">Unauthorized access is prohibited</p>
         </div>

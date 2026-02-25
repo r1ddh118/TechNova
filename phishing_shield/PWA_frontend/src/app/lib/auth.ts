@@ -35,14 +35,6 @@ interface StoredUser {
   createdAt: string;
 }
 
-// Demo credentials for offline deployment
-// In production, these would be securely provisioned during installation
-const DEMO_USERS = [
-  { username: 'operator1', email: 'operator1@phishguard.local', password: 'SecureOps2026!', role: 'operator' as const },
-  { username: 'analyst1', email: 'analyst1@phishguard.local', password: 'SecureOps2026!', role: 'analyst' as const },
-  { username: 'admin1', email: 'admin1@phishguard.local', password: 'SecureOps2026!', role: 'admin' as const },
-];
-
 const SESSION_KEY = 'phishguard_session';
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours for shift work
 const DB_NAME = 'phishguard_auth';
@@ -58,8 +50,6 @@ const dbPromise = openDB(DB_NAME, 1, {
   },
 });
 
-let seedPromise: Promise<void> | null = null;
-
 async function hashPassword(password: string): Promise<string> {
   const data = new TextEncoder().encode(password);
   const digest = await crypto.subtle.digest('SHA-256', data);
@@ -68,33 +58,8 @@ async function hashPassword(password: string): Promise<string> {
     .join('');
 }
 
-async function ensureSeededUsers(): Promise<void> {
-  if (!seedPromise) {
-    seedPromise = (async () => {
-      const db = await dbPromise;
-      const count = await db.count(USERS_STORE);
-      if (count > 0) {
-        return;
-      }
-
-      const tx = db.transaction(USERS_STORE, 'readwrite');
-      for (const demoUser of DEMO_USERS) {
-        await tx.store.add({
-          id: crypto.randomUUID(),
-          username: demoUser.username,
-          email: demoUser.email,
-          role: demoUser.role,
-          authProvider: 'local',
-          passwordHash: await hashPassword(demoUser.password),
-          facilityId: 'FACILITY-001',
-          createdAt: new Date().toISOString(),
-        } satisfies StoredUser);
-      }
-      await tx.done;
-    })();
-  }
-
-  await seedPromise;
+async function ensureUserStoreReady(): Promise<void> {
+  await dbPromise;
 }
 
 function createSession(user: StoredUser): User {
@@ -117,12 +82,12 @@ function createSession(user: StoredUser): User {
 }
 
 export async function authenticate(credentials: Credentials): Promise<User | null> {
-  await ensureSeededUsers();
+  await ensureUserStoreReady();
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const db = await dbPromise;
-  const byUsername = await db.getFromIndex(USERS_STORE, 'username', credentials.usernameOrEmail);
-  const byEmail = await db.getFromIndex(USERS_STORE, 'email', credentials.usernameOrEmail.toLowerCase());
+  const byUsername = await db.getFromIndex(USERS_STORE, 'username', credentials.usernameOrEmail.trim());
+  const byEmail = await db.getFromIndex(USERS_STORE, 'email', credentials.usernameOrEmail.trim().toLowerCase());
   const user = (byUsername ?? byEmail) as StoredUser | undefined;
 
   if (!user || !user.passwordHash) {
@@ -138,11 +103,15 @@ export async function authenticate(credentials: Credentials): Promise<User | nul
 }
 
 export async function signupWithPassword(signupData: SignupData): Promise<User> {
-  await ensureSeededUsers();
+  await ensureUserStoreReady();
 
   const db = await dbPromise;
   const username = signupData.username.trim();
   const email = signupData.email.trim().toLowerCase();
+
+  if (!username || !email || !signupData.password) {
+    throw new Error('Please fill username, email and password');
+  }
 
   if (await db.getFromIndex(USERS_STORE, 'username', username)) {
     throw new Error('Username already exists');
@@ -169,24 +138,45 @@ export async function signupWithPassword(signupData: SignupData): Promise<User> 
 }
 
 export async function authenticateWithGoogle(googleEmail: string): Promise<User> {
-  await ensureSeededUsers();
+  await ensureUserStoreReady();
 
   const db = await dbPromise;
   const email = googleEmail.trim().toLowerCase();
   const existingUser = await db.getFromIndex(USERS_STORE, 'email', email) as StoredUser | undefined;
 
-  if (existingUser) {
-    return createSession(existingUser);
+  if (!existingUser) {
+    throw new Error('ACCOUNT_NOT_FOUND');
   }
 
-  const username = email.split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 24) || `user-${Date.now()}`;
+  return createSession(existingUser);
+}
+
+export async function completeGoogleSignup(signupData: SignupData): Promise<User> {
+  await ensureUserStoreReady();
+
+  const db = await dbPromise;
+  const username = signupData.username.trim();
+  const email = signupData.email.trim().toLowerCase();
+
+  if (!username || !email || !signupData.password) {
+    throw new Error('Please fill username, email and password');
+  }
+
+  if (await db.getFromIndex(USERS_STORE, 'username', username)) {
+    throw new Error('Username already exists');
+  }
+
+  if (await db.getFromIndex(USERS_STORE, 'email', email)) {
+    throw new Error('Email already exists');
+  }
+
   const newUser: StoredUser = {
     id: crypto.randomUUID(),
     username,
     email,
     role: 'operator',
     authProvider: 'google',
-    passwordHash: null,
+    passwordHash: await hashPassword(signupData.password),
     facilityId: 'FACILITY-001',
     createdAt: new Date().toISOString(),
   };
@@ -202,8 +192,7 @@ export function getCurrentUser(): User | null {
 
   try {
     const session = JSON.parse(sessionData);
-    
-    // Check if session expired
+
     if (session.expiresAt < Date.now()) {
       logout();
       return null;
