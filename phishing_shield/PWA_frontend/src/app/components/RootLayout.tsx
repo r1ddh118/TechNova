@@ -7,8 +7,7 @@ import {
   Radio,
   Lock,
   LogOut,
-  User,
-  Users
+  User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCurrentUser, logout } from '../lib/auth';
@@ -42,7 +41,6 @@ export function RootLayout() {
   };
 
   const navItems = [
-    { path: '/accounts', label: 'Accounts', icon: Users },
     { path: '/scan', label: 'Threat Scan', icon: Shield },
     { path: '/history', label: 'Scan History', icon: History },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
@@ -74,7 +72,14 @@ export function RootLayout() {
                 <User className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user.username}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/account-details')}
+                  className="h-auto p-0 text-sm font-medium text-foreground hover:text-foreground truncate"
+                >
+                  {user.username}
+                </Button>
                 <p className="text-xs text-muted-foreground uppercase">{user.role}</p>
               </div>
             </div>

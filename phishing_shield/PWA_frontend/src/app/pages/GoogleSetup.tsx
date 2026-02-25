@@ -32,7 +32,7 @@ export function GoogleSetup() {
     try {
       await completeGoogleSignup({ username, email: prefilledEmail, password });
       toast.success('Google account linked and secured.');
-      navigate('/accounts');
+      navigate('/account-details');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Setup failed';
       toast.error(message);
