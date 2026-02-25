@@ -7,7 +7,7 @@ import { ThreatAnalytics } from './pages/ThreatAnalytics';
 import { SystemStatus } from './pages/SystemStatus';
 import { ExplainabilityDetails } from './pages/ExplainabilityDetails';
 import { GoogleSetup } from './pages/GoogleSetup';
-import { Accounts } from './pages/Accounts';
+import { AccountDetails } from './pages/AccountDetails';
 
 function checkAuth(): boolean {
   if (typeof window === 'undefined') return false;
@@ -30,7 +30,7 @@ function protectedLoader() {
 
 function loginLoader() {
   if (checkAuth()) {
-    return redirect('/accounts');
+    return redirect('/account-details');
   }
   return null;
 }
@@ -51,14 +51,14 @@ export const router = createBrowserRouter([
     Component: RootLayout,
     loader: protectedLoader,
     children: [
-      { index: true, loader: () => redirect('/accounts') },
-      { path: 'accounts', Component: Accounts },
+      { index: true, loader: () => redirect('/account-details') },
+      { path: 'account-details', Component: AccountDetails },
       { path: 'scan', Component: ThreatScanConsole },
       { path: 'history', Component: ScanHistory },
       { path: 'history/explainability/:scanId', Component: ExplainabilityDetails },
       { path: 'analytics', Component: ThreatAnalytics },
       { path: 'system', Component: SystemStatus },
-      { path: '*', loader: () => redirect('/accounts') },
+      { path: '*', loader: () => redirect('/account-details') },
     ],
   },
   {

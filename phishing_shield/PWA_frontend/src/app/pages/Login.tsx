@@ -33,7 +33,7 @@ export function Login() {
 
         if (user) {
           toast.success(`Welcome, ${user.username}`);
-          navigate('/accounts');
+          navigate('/account-details');
         } else {
           toast.error('Invalid credentials');
         }
@@ -55,7 +55,7 @@ export function Login() {
     try {
       const user = await signupWithPassword({ username, email, password });
       toast.success(`Account created for ${user.email}`);
-      navigate('/accounts');
+      navigate('/account-details');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Signup failed';
       toast.error(message);
@@ -72,7 +72,7 @@ export function Login() {
     try {
       const user = await authenticateWithGoogle(googleEmail);
       toast.success(`Signed in with Google as ${user.email}`);
-      navigate('/accounts');
+      navigate('/account-details');
     } catch (error) {
       if (error instanceof Error && error.message === 'ACCOUNT_NOT_FOUND') {
         toast.info('No existing account found. Please complete setup.');
