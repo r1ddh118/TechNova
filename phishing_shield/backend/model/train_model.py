@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import perf_counter
 import sys
+import pickle
 
 import joblib
 import numpy as np
@@ -47,94 +48,33 @@ def _to_prob(model, X):
     return (decision - decision.min()) / max(decision.max() - decision.min(), 1e-8)
 
 
-def _build_training_frame_from_raw(root: Path, max_rows: int = 4000) -> pd.DataFrame:
+def _load_features_dataset(root: Path) -> pd.DataFrame:
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
-    from backend.nlp_engine.feature_extractor import extract_features
 
-    data_dir = root / "data"
-    source_files = [
-        data_dir / "Nigerian_Fraud.csv",
-        data_dir / "SpamAssasin.csv",
-        data_dir / "CEAS_08.csv",
-        data_dir / "Nazario.csv",
-        data_dir / "Ling.csv",
-        data_dir / "Enron.csv",
-    ]
+    data_path = root / "data" / "features.csv"
+    if not data_path.exists():
+        from backend.nlp_engine.generate_features import main as generate_features_main
 
-    rows = []
-    per_file = max(300, max_rows // max(len(source_files), 1))
+        print("features.csv not found. Generating from available source datasets...")
+        generate_features_main()
 
-    for f in source_files:
-        if not f.exists():
-            continue
-        try:
-            df = pd.read_csv(f, on_bad_lines="skip", low_memory=False)
-        except Exception:
-            try:
-                df = pd.read_csv(f, encoding="latin-1", on_bad_lines="skip", low_memory=False)
-            except Exception:
-                continue
+    if not data_path.exists():
+        raise RuntimeError("features.csv is required for training but could not be generated")
 
-        if "label" not in df.columns:
-            continue
-
-        sampled = df.sample(n=min(per_file, len(df)), random_state=42) if len(df) > per_file else df
-        for _, row in sampled.iterrows():
-            label_raw = str(row.get("label", "")).strip().lower()
-            if label_raw in ("legitimate", "legit", "safe", "0"):
-                label = "legitimate"
-            elif label_raw in ("phishing", "phish", "1"):
-                label = "phishing"
-            else:
-                continue
-
-            text = str(row.get("body") or row.get("message") or row.get("text") or "")
-            subject = str(row.get("subject") or "")
-            combined = (subject + "\n" + text).strip()
-            if len(combined) < 10:
-                continue
-
-            feats = extract_features(combined)
-            rows.append(
-                {
-                    "label": label,
-                    "url_count": feats.get("url_count", 0),
-                    "suspicious_url_score": feats.get("suspicious_url_score", 0),
-                    "ip_url_count": feats.get("ip_url_count", 0),
-                    "shortener_url_count": feats.get("shortener_url_count", 0),
-                    "suspicious_subdomain_count": feats.get("suspicious_subdomain_count", 0),
-                    "lookalike_domain_count": feats.get("lookalike_domain_count", 0),
-                    "urgency_score": feats.get("urgency_score", 0),
-                    "impersonation_score": feats.get("impersonation_score", 0),
-                    "credential_request_score": feats.get("credential_request_score", 0),
-                    "digit_count": feats.get("digit_count", 0),
-                    "length": feats.get("length", 0),
-                    "text_length": feats.get("length", 0),
-                }
-            )
-            if len(rows) >= max_rows:
-                break
-        if len(rows) >= max_rows:
-            break
-
-    return pd.DataFrame(rows)
+    df = pd.read_csv(data_path, low_memory=False)
+    if len(df) > 12000:
+        df = df.sample(n=12000, random_state=42)
+    return df
 
 
 def train():
     root = Path(__file__).resolve().parents[2]
-    data_path = root / "data" / "features.csv"
     model_save_path = Path(__file__).resolve().parent / "model.joblib"
+    pickle_save_path = Path(__file__).resolve().parent / "model.pkl"
     metrics_save_path = Path(__file__).resolve().parent / "model_metrics.joblib"
 
-    if data_path.exists():
-        df = pd.read_csv(data_path, low_memory=False)
-        if len(df) > 12000:
-            df = df.sample(n=12000, random_state=42)
-    else:
-        df = _build_training_frame_from_raw(root)
-        if df.empty:
-            raise RuntimeError("No training data could be built from raw datasets")
+    df = _load_features_dataset(root)
 
     df = df.dropna(subset=["label"])
 
@@ -174,6 +114,7 @@ def train():
         "passive_aggressive": (PassiveAggressiveClassifier(random_state=42, max_iter=1000, tol=1e-3), {"C": [0.5, 1.0]}),
         "perceptron": (Perceptron(random_state=42, max_iter=1000, tol=1e-3), {"penalty": [None, "l2"]}),
     }
+    print(f"Training {len(candidates)} candidate models...")
 
     best_name = None
     best_model = None
@@ -218,6 +159,8 @@ def train():
     }
 
     joblib.dump(best_model, model_save_path)
+    with pickle_save_path.open("wb") as f:
+        pickle.dump(best_model, f)
     joblib.dump(
         {
             "best_model": best_name,
@@ -235,6 +178,7 @@ def train():
     )
 
     print(f"Saved best model ({best_name}) to {model_save_path}")
+    print(f"Saved best model pickle to {pickle_save_path}")
     print(f"Saved model metrics to {metrics_save_path}")
 
 
